@@ -1,0 +1,98 @@
+# -- Shared
+dist
+dist-*
+*.o
+*.hi
+*.prof
+*.aux
+.ghc.environment.*
+
+# -- Haskell
+cabal-dev
+*.hie
+*.chi
+*.chs.h
+*.dyn_o
+*.dyn_hi
+.hpc
+.hsenv
+
+*.aux
+*.hp
+*.eventlog
+.stack-work/
+.HTF/
+
+# -- Cabal
+# trivial gitignore file
+.cabal-sandbox/
+cabal.sandbox.config
+cabal.project.local
+cabal.project.local~
+cabal-dev/
+.hpc/
+*.p_hi
+*.tix
+
+register.sh
+./cabal.config
+cabal-tests.log
+.python-sphinx-virtualenv/
+
+/Cabal/dist/
+/Cabal/tests/Setup
+/Cabal/Setup
+/Cabal/source-file-list
+
+/cabal-install/dist/
+/cabal-install/Setup
+/cabal-install/source-file-list
+
+.stylish-haskell.yaml
+.stylish-haskell.yml
+.ghci
+.ghcid
+
+# Output of release and bootstrap
+_build
+
+# editor temp files
+*#
+.#*
+*~
+.*.swp
+# *.bak -- I name things to .bak and will forget about this and it will end poorly
+
+# GHC build
+Cabal/GNUmakefile
+Cabal/dist-boot/
+Cabal/dist-install/
+Cabal/ghc.mk
+
+# TAGS files
+TAGS
+tags
+ctags
+
+# stack artifacts
+/.stack-work/
+stack.yaml.lock
+
+# Shake artifacts
+.shake*
+progress.txt
+
+# test files
+register.sh
+
+# python artifacts from documentation builds
+*.pyc
+
+# macOS folder metadata
+.DS_Store
+
+# benchmarks
+bench.html
+
+# Emacs
+.projectile
