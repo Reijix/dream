@@ -8,8 +8,8 @@ import qualified Text.Parsec.Token as Tok
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser style
     where 
-        ops = ["+","-", ":="]
-        names = ["def", "var", "int", "real", "func", "end", "return"]
+        ops = ["+","-", "*", "/", ":=", "or", "and", "==", "!=", "<", "<=", ">", ">="]
+        names = ["def", "var", "int", "real", "func", "end", "return", "as"]
         style = emptyDef {
             Tok.commentLine = "#",
             Tok.reservedOpNames = ops,
@@ -22,11 +22,17 @@ integer = Tok.integer lexer
 float :: Parser Double
 float = Tok.float lexer
 
+charLiteral :: Parser Char
+charLiteral = Tok.charLiteral lexer
+
 parens :: Parser a -> Parser a
 parens = Tok.parens lexer
 
 braces :: Parser a -> Parser a
 braces = Tok.braces lexer
+
+brackets :: Parser a -> Parser a
+brackets = Tok.brackets lexer
 
 commaSep :: Parser a -> Parser [a]
 commaSep = Tok.commaSep lexer
