@@ -51,7 +51,8 @@ data Statement
 
 -- EXPRESSIONS
 data Expr
-    = Float Double
+    = Nat Int
+    | Real Double
     | BinOp Op Expr Expr
     | Var String
     | LocalVariable VariableDeclaration

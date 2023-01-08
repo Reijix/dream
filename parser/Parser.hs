@@ -9,7 +9,7 @@ import qualified Text.Parsec.Token as Tok
 import Lexer
 import Syntax
 
-binary s f assoc = Ex.Infix (reservedOp s >> return (BinOp f)) assoc
+binary s f = Ex.Infix (reservedOp s >> return (BinOp f))
 
 tableArith = [[binary "*" Times Ex.AssocLeft,
           binary "/" Divide Ex.AssocLeft],
@@ -19,27 +19,22 @@ tableArith = [[binary "*" Times Ex.AssocLeft,
 -- TODO separate expressions into arithmetic, logical, ...
 -- EXPRESSIONS
 
-int :: Parser Expr
-int = do
-  n <- integer
-  return $ Float (fromInteger n)
+nat :: Parser Expr
+nat = Nat . fromInteger <$> integer
 
-floating :: Parser Expr
-floating = do
-  n <- float
-  return $ Float n
+real :: Parser Expr
+real = Real <$> float
 
 arithExpr :: Parser Expr
 arithExpr = Ex.buildExpressionParser tableArith factor
 
+-- TODO change this up to better match specification.
 variable :: Parser Expr
-variable = do
-  var <- identifier
-  return $ Var var
+variable = Var <$> identifier
 
 factor :: Parser Expr
-factor = try floating
-      <|> try int
+factor = try real
+      <|> try nat
       <|> variable
       <|> parens arithExpr
 
@@ -48,12 +43,12 @@ factor = try floating
 typenameInt :: Parser PrimitiveTypeName
 typenameInt = do
   reserved "int"
-  return $ TInt
+  return TInt
 
 typenameReal :: Parser PrimitiveTypeName
 typenameReal = do
   reserved "real"
-  return $ TReal
+  return TReal
 
 tType :: Parser PrimitiveTypeName
 tType = try typenameInt
@@ -66,15 +61,13 @@ variableDeclaration = do
   reserved "var"
   name <- identifier
   colon
-  typename <- tType
-  return $ VariableDeclaration name typename
+  VariableDeclaration name <$> tType
 
 parameterDeclaration :: Parser ParameterDeclaration
 parameterDeclaration = do
   name <- identifier
   colon
-  typename <- tType
-  return $ ParameterDeclaration name typename
+  ParameterDeclaration name <$> tType
 
 functionDeclaration :: Parser FunctionDeclaration
 functionDeclaration = do
@@ -88,18 +81,14 @@ functionDeclaration = do
   return $ FunctionDeclaration name retType params body
 
 globalVariableDeclaration :: Parser GlobalDeclaration
-globalVariableDeclaration = do
-  decl <- variableDeclaration
-  return $ GlobalVariableDeclaration decl
+globalVariableDeclaration = GlobalVariableDeclaration <$> variableDeclaration
 
 globalFunctionDeclaration :: Parser GlobalDeclaration
-globalFunctionDeclaration = do
-  fun <- functionDeclaration
-  return $ GlobalFunctionDeclaration fun
+globalFunctionDeclaration = GlobalFunctionDeclaration <$> functionDeclaration
 
 globalDeclaration :: Parser GlobalDeclaration
 globalDeclaration = try globalVariableDeclaration
-                 <|> try globalFunctionDeclaration
+                <|> try globalFunctionDeclaration
 
 -- STATEMENTS
 
@@ -114,8 +103,7 @@ assignStatement = do
   -- TODO lhs needs special parsing for arrays
   lhs <- identifier
   reservedOp ":="
-  rhs <- arithExpr
-  return $ AssignStatement lhs rhs
+  AssignStatement lhs <$> arithExpr 
 
 returnStatement :: Parser Statement
 returnStatement = do
@@ -131,9 +119,7 @@ statement = try functionCallStatement
 -- BLOCKS
 
 program :: Parser [GlobalDeclaration]
-program = many $ do
-  decl <- globalDeclaration
-  return decl
+program = many globalDeclaration
 
 block :: Parser Block
 block = do
@@ -151,7 +137,7 @@ contents p = do
   return r
 
 parseExpr :: String -> Either ParseError Expr
-parseExpr s = parse (contents arithExpr) "<stdin>" s
+parseExpr = parse (contents arithExpr) "<stdin>"
 
 parseProgram :: String -> Either ParseError [GlobalDeclaration]
-parseProgram s = parse (contents program) "<stdin>" s
+parseProgram = parse (contents program) "<stdin>"
