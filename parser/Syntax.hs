@@ -24,8 +24,8 @@ data VariableDeclaration = VariableDeclaration {variableName :: Name,
     deriving (Eq, Ord, Show)
 
 data FunctionDeclaration = FunctionDeclaration {functionName :: Name,
-                                                functionReturnType :: Maybe Typename,
                                                 functionParameterDeclarations :: [ParameterDeclaration],
+                                                functionReturnType :: Maybe Typename,
                                                 functionBlock :: Block}
     deriving (Eq, Ord, Show)
 
@@ -51,7 +51,7 @@ data Statement
 
 -- EXPRESSIONS
 data Expr
-    = Nat Int
+    = Int Int
     | Real Double
     | BinOp Op Expr Expr
     | Var String
