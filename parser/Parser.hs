@@ -10,10 +10,7 @@ import qualified Text.Parsec.Token as Tok
 
 import Lexer
 import Syntax
-
--- used for expressions
--- binary s f = Ex.Infix (reservedOp s >> return (BinOp f))
-binary name fun = Ex.Infix (do { reservedOp name; return fun })
+import qualified GHC.Base as Ex.AssocLeft
 
 program :: Parser Program
 program = Program <$> many globalDeclaration
@@ -55,7 +52,7 @@ parameterDeclaration = ParameterDeclaration
 arrayTypeName :: Parser TypeName
 arrayTypeName = ArrayTypeName
     <$> primitiveTypeName
-    <*> many1 (brackets arithmeticExpr)
+    <*> many1 (brackets expression)
     <?> "ArrayTypeName"
 
 typeName :: Parser TypeName
@@ -91,62 +88,30 @@ functionCallStatement = FunctionCallStatement
 assignStatement :: Parser Statement
 assignStatement = AssignStatement
     <$> lvalue
-    <*> (reservedOp ":=" *> arithmeticExpr)
+    <*> (reservedOp ":=" *> expression)
     <?> "AssignStatement"
 
 ifStatement :: Parser Statement
 ifStatement = IfStatement
-    <$> (reserved "if" *> conditionalExpr)
+    <$> (reserved "if" *> expression)
     <*> (reserved "then" *> block)
     <*> optionMaybe (reserved "then" *> block) <* reserved "end"
     <?> "IfStatement"
 
 whileStatement :: Parser Statement
 whileStatement = WhileStatement
-    <$> (reserved "while" *> conditionalExpr)
+    <$> (reserved "while" *> expression)
     <*> (reserved "do" *> block) <* reserved "end"
     <?> "WhileStatement"
 
 returnStatement :: Parser Statement
 returnStatement = ReturnStatement
-    <$> (reserved "return" *> optionMaybe arithmeticExpr)
+    <$> (reserved "return" *> optionMaybe expression)
     <?> "ReturnStatement"
 
-lvalue :: Parser Expression
 lvalue = try identifier
      <|> try arrayAccess
      <?> "LValue"
-
-conditionalExpr :: Parser Expression
-conditionalExpr = orExpr
-
-orExpr :: Parser Expression
-orExpr = try orComplexExpr
-     <|> orSimpleExpr
-
-orComplexExpr :: Parser Expression
-orComplexExpr = BinaryExpression
-    <$> andExpr
-    <*> (reserved "or" $> OR)
-    <*> orExpr
-    <?> "Or-Expression"
-
-orSimpleExpr :: Parser Expression
-orSimpleExpr = andExpr
-
-andExpr :: Parser Expression
-andExpr = try andComplexExpr
-      <|> andSimpleExpr
-
-andComplexExpr :: Parser Expression
-andComplexExpr = BinaryExpression
-    <$> compExpr
-    <*> (reserved "and" $> AND)
-    <*> andExpr
-    <?> "And-Expression"
-
-andSimpleExpr :: Parser Expression
-andSimpleExpr = compExpr
 
 compOp :: Parser BinOp
 compOp = try (reservedOp "==" $> EQUALS)
@@ -157,71 +122,50 @@ compOp = try (reservedOp "==" $> EQUALS)
      <|> try (reservedOp ">=" $> GREATER_EQUALS)
      <?> "Compare-Operator"
 
-compExpr :: Parser Expression
-compExpr = BinaryExpression
-    <$> arithmeticExpr
-    <*> compOp
-    <*> arithmeticExpr
-    <?> "Compare-Expression"
-
-arithmeticExpr :: Parser Expression
-arithmeticExpr = additiveExpr
-
 additiveOp :: Parser BinOp
 additiveOp = try (reservedOp "+" $> ADD)
-         <|> try (reservedOp "-" $> SUB)
+         <|> (reservedOp "-" $> SUB)
          <?> "Additive-Operator"
 
-additiveComplexExpr :: Parser Expression
-additiveComplexExpr = BinaryExpression
-    <$> additiveSimple
-    <*> additiveOp
-    <*> additiveExpr
-    <?> "Complex Additive Expression"
-
-additiveSimple :: Parser Expression
-additiveSimple = multiplicativeExpr
-    <?> "Simple additive Expression"
-
-additiveExpr :: Parser Expression
-additiveExpr = try additiveComplexExpr
-           <|> try additiveSimple
-           <?> "Additive-Expression"
-
-multiplicativeOp :: Parser BinOp
 multiplicativeOp = try (reservedOp "*" $> MUL)
-               <|> try (reservedOp "/" $> DIV)
+               <|> (reservedOp "/" $> DIV)
                <?> "Multiplicative-Operator"
 
-multiplicativeComplexExpr :: Parser Expression
-multiplicativeComplexExpr = BinaryExpression
-    <$> multiplicativeFactor
-    <*> multiplicativeOp
-    <*> multiplicativeExpr
-    <?> "Complex multiplicative Expression"
+term :: Parser Expression
+term = try arrayAccess
+         <|> try (Constant <$> numberLiteral)
+         <|> try functionCall
+         <|> try identifier
+         <|> try castExpr
+         <|> try (parens expression)
 
-multiplicativeFactor :: Parser Expression
-multiplicativeFactor = factor
-    <?> "Simple multiplicative Expression"
+anyOp :: Parser BinOp
+anyOp = try compOp
+    <|> try additiveOp
+    <|> try multiplicativeOp
 
-multiplicativeExpr :: Parser Expression
-multiplicativeExpr = try multiplicativeComplexExpr
-                 <|> try multiplicativeFactor
-                 <?> "Multiplicative-Expression" 
+binary s f = Ex.Infix (reservedOp s >> return (`BinaryExpression` f))
 
-factor :: Parser Expression
-factor = try identifier
-     <|> try (Constant <$> numberLiteral)
-     <|> try functionCall
-     <|> try arrayAccess
-     <|> try (parens arithmeticExpr)
-     <|> try castExpr
-     <?> "Factor"
+table = [[binary "*" MUL Ex.AssocLeft,
+          binary "/" DIV Ex.AssocLeft]
+        ,[binary "+" ADD Ex.AssocLeft,
+          binary "-" SUB Ex.AssocLeft]
+        ,[binary "<" LESS Ex.AssocLeft,
+          binary "<=" LESS_EQUALS Ex.AssocLeft,
+          binary ">" GREATER Ex.AssocLeft,
+          binary ">=" GREATER_EQUALS Ex.AssocLeft,
+          binary "==" EQUALS Ex.AssocLeft,
+          binary "!=" NOT_EQUALS Ex.AssocLeft]
+        ,[binary "and" AND Ex.AssocLeft,
+          binary "or" OR Ex.AssocLeft]]
+
+expression :: Parser Expression
+expression = Ex.buildExpressionParser table term
 
 castExpr :: Parser Expression
 castExpr = parens (
     TypeCast
-        <$> arithmeticExpr 
+        <$> expression 
         <*> primitiveTypeName <* reserved "as"
         <?> "Cast Expression"
     )
@@ -254,12 +198,12 @@ functionCall = FunctionCall
     <?> "Function Call"
 
 argument :: Parser Expression
-argument = arithmeticExpr
+argument = expression
 
 arrayAccess :: Parser Expression
 arrayAccess = ArrayAccess
     <$> identifier
-    <*> brackets (many arithmeticExpr)
+    <*> brackets (many expression)
     <?> "Array Access"
 
 
