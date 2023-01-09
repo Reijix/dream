@@ -46,8 +46,8 @@ semi = Tok.semi lexer
 colon :: Parser String
 colon = Tok.colon lexer
 
-identifier :: Parser String
-identifier = Tok.identifier lexer
+identifierStr :: Parser String
+identifierStr = Tok.identifier lexer
 
 reserved :: String -> Parser ()
 reserved = Tok.reserved lexer

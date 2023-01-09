@@ -9,7 +9,7 @@ process line = do
     let res = parseProgram line
     case res of
         Left err -> print err
-        Right ex -> mapM_ print ex
+        Right ex -> print ex
 
 main :: IO ()
 main = runInputT defaultSettings loop
