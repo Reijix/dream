@@ -10,7 +10,6 @@ import qualified Text.Parsec.Token as Tok
 
 import Lexer
 import Syntax
-import GHC.IO.SubSystem (conditional)
 
 -- used for expressions
 -- binary s f = Ex.Infix (reservedOp s >> return (BinOp f))
@@ -83,7 +82,6 @@ functionCallStatement = FunctionCallStatement
     <$> functionCall
     <?> "FunctionCallStatement"
 
--- TODO lhs needs special parsing for arrays
 assignStatement :: Parser Statement
 assignStatement = AssignStatement
     <$> lvalue
@@ -154,9 +152,9 @@ additiveOp = try (reservedOp "+" $> ADD)
 
 additiveComplexExpr :: Parser AdditiveExpr
 additiveComplexExpr = AdditiveComplexExpr
-    <$> additiveExpr
+    <$> additiveSimple
     <*> additiveOp
-    <*> additiveSimple
+    <*> additiveExpr
     <?> "Complex Additive Expression"
 
 additiveSimple :: Parser AdditiveExpr
@@ -176,9 +174,9 @@ multiplicativeOp = try (reservedOp "*" $> MUL)
 
 multiplicativeComplexExpr :: Parser MultiplicativeExpr
 multiplicativeComplexExpr = MultiplicativeComplexExpr
-    <$> multiplicativeExpr
+    <$> multiplicativeFactor
     <*> multiplicativeOp
-    <*> multiplicativeFactor
+    <*> multiplicativeExpr
     <?> "Complex multiplicative Expression"
 
 multiplicativeFactor :: Parser MultiplicativeExpr
@@ -257,5 +255,5 @@ contents p = do
 parseExpr :: String -> Either ParseError Expr
 parseExpr = parse (contents arithExpr) "<stdin>"
 -}
-parseProgram :: String -> Either ParseError [Declaration]
+parseProgram :: String -> Either ParseError Program
 parseProgram = parse (contents program) "<stdin>"
