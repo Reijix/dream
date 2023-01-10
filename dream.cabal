@@ -16,6 +16,8 @@ license:            MIT
 author:             Leon Vatthauer
 maintainer:         leon.vatthauer@fau.de
 
+Tested-With: GHC ==9.2.2
+
 -- A copyright notice.
 -- copyright:
 -- category:
