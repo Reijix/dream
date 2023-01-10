@@ -1,20 +1,14 @@
 cabal-version:      2.4
 name:               dream
 version:            0.1.0.0
-
--- A short (one-line) description of the package.
 synopsis:           The compiler for the dream language
-
--- A longer description of the package.
 description:        A small compiler written as an exercise to better understand compilers and help me with my studies.
-
--- A URL where users can report bugs.
-bug-reports:        https://github.com/Reijix/dream
-
--- The license under which the package is released.
+homepage:  https://github.com/Reijix/dream
 license:            MIT
 author:             Leon Vatthauer
 maintainer:         leon.vatthauer@fau.de
+category:           Compiler
+Tested-With: GHC ==9.2.2
 
 -- A copyright notice.
 -- copyright:
@@ -23,7 +17,7 @@ extra-source-files: CHANGELOG.md
 
 library parser
     exposed-modules: Parser, Syntax
-    build-depends:    base ^>=4.16.3.0,
+    build-depends:    base ^>=4.16.1.0,
                       parsec,
     other-modules:
         Lexer
@@ -32,7 +26,7 @@ library parser
 
 library dot
     exposed-modules: Dot
-    build-depends:    base ^>=4.16.3.0,
+    build-depends:    base ^>=4.16.1.0,
                       parser
     hs-source-dirs:   dot-generator
     default-language: Haskell2010
