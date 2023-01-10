@@ -1,0 +1,10 @@
+func main () {
+    if x == 5
+    then
+        var y : real;
+    else
+        var x : real;
+    end;
+} end
+
+var x : int

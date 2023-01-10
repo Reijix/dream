@@ -1,0 +1,7 @@
+func main () {
+    while x == 5 do
+        x := 5;
+    end;
+} end
+
+var x : int
