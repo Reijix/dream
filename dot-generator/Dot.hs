@@ -78,11 +78,29 @@ visitStatement state file (AssignStatement lhs rhs) = do
     newState <- visitExpression newState file lhs
     newState <- visitExpression newState file rhs
     createArrow file newState
--- TODO
-visitStatement state file (FunctionCallStatement funCall) = return state
-visitStatement state file (IfStatement cond thenBlock elseBlock) = return state
-visitStatement state file (WhileStatement cond thenBlock) = return state
-visitStatement state file (ReturnStatement aexpr) = return state
+visitStatement state file (FunctionCallStatement funCall) = do
+    newState <- printNode file "FunctionCallStatement" state
+    newState <- visitExpression newState file funCall
+    createArrow file newState
+visitStatement state file (IfStatement cond thenBlock elseBlock) = do
+    newState <- printNode file "IfStatement" state
+    newState <- visitExpression newState file cond
+    newState <- visitBlock newState file thenBlock
+    newState <- case elseBlock of
+        Nothing -> return newState
+        Just tBlock -> visitBlock newState file tBlock
+    createArrow file newState
+visitStatement state file (WhileStatement cond thenBlock) = do
+    newState <- printNode file "WhileStatement" state
+    newState <- visitExpression newState file cond
+    newState <- visitBlock newState file thenBlock
+    createArrow file newState
+visitStatement state file (ReturnStatement aexpr) = do
+    newState <- printNode file "ReturnStatement" state
+    newState <- case aexpr of
+        Nothing -> return newState
+        Just expr -> visitExpression newState file expr
+    createArrow file newState
 
 visitTypeName :: DotState -> Handle -> TypeName -> IO DotState
 visitTypeName state file (PrimitiveTypeName pType) = do
