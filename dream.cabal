@@ -25,7 +25,7 @@ extra-source-files: CHANGELOG.md
 
 library parser
     exposed-modules: Parser, Syntax
-    build-depends:    base ^>=4.16.3.0,
+    build-depends:    base ^>=4.16.1.0,
                       parsec,
     other-modules:
         Lexer
