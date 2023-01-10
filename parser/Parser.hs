@@ -52,7 +52,7 @@ parameterDeclaration = ParameterDeclaration
 arrayTypeName :: Parser TypeName
 arrayTypeName = ArrayTypeName
     <$> primitiveTypeName
-    <*> many1 (brackets expression)
+    <*> many1 (brackets arithExpression)
     <?> "ArrayTypeName"
 
 typeName :: Parser TypeName
@@ -70,7 +70,6 @@ block :: Parser Block
 block = Block
     <$> endBy variableDeclaration semi
     <*> endBy statement semi
-    <?> "Block"
 
 statement :: Parser Statement
 statement = try functionCallStatement
@@ -88,84 +87,76 @@ functionCallStatement = FunctionCallStatement
 assignStatement :: Parser Statement
 assignStatement = AssignStatement
     <$> lvalue
-    <*> (reservedOp ":=" *> expression)
+    <*> (reservedOp ":=" *> arithExpression)
     <?> "AssignStatement"
 
 ifStatement :: Parser Statement
 ifStatement = IfStatement
-    <$> (reserved "if" *> expression)
+    <$> (reserved "if" *> condExpression)
     <*> (reserved "then" *> block)
-    <*> optionMaybe (reserved "then" *> block) <* reserved "end"
+    <*> (optionMaybe (try (reserved "else" >> block)) <* reserved "end")
     <?> "IfStatement"
 
 whileStatement :: Parser Statement
 whileStatement = WhileStatement
-    <$> (reserved "while" *> expression)
+    <$> (reserved "while" *> condExpression)
     <*> (reserved "do" *> block) <* reserved "end"
     <?> "WhileStatement"
 
 returnStatement :: Parser Statement
 returnStatement = ReturnStatement
-    <$> (reserved "return" *> optionMaybe expression)
+    <$> (reserved "return" *> optionMaybe arithExpression)
     <?> "ReturnStatement"
 
 lvalue = try identifier
      <|> try arrayAccess
      <?> "LValue"
 
-compOp :: Parser BinOp
-compOp = try (reservedOp "==" $> EQUALS)
-     <|> try (reservedOp "!=" $> NOT_EQUALS)
-     <|> try (reservedOp "<" $> LESS)
-     <|> try (reservedOp "<=" $> LESS_EQUALS)
-     <|> try (reservedOp ">" $> GREATER)
-     <|> try (reservedOp ">=" $> GREATER_EQUALS)
-     <?> "Compare-Operator"
+binary s f = Ex.Infix (reservedOp s >> return (`BinaryExpression` f))
 
-additiveOp :: Parser BinOp
-additiveOp = try (reservedOp "+" $> ADD)
-         <|> (reservedOp "-" $> SUB)
-         <?> "Additive-Operator"
+tableArith = [[binary "*" MUL Ex.AssocLeft,
+               binary "/" DIV Ex.AssocLeft]
+             ,[binary "+" ADD Ex.AssocLeft,
+               binary "-" SUB Ex.AssocLeft]]
+tableCond = [[binary "and" AND Ex.AssocLeft,
+              binary "or" OR Ex.AssocLeft]]
+tableComp = [[binary "<" LESS Ex.AssocLeft,
+              binary "<=" LESS_EQUALS Ex.AssocLeft,
+              binary ">" GREATER Ex.AssocLeft,
+              binary ">=" GREATER_EQUALS Ex.AssocLeft,
+              binary "==" EQUALS Ex.AssocLeft,
+              binary "!=" NOT_EQUALS Ex.AssocLeft]]
 
-multiplicativeOp = try (reservedOp "*" $> MUL)
-               <|> (reservedOp "/" $> DIV)
-               <?> "Multiplicative-Operator"
-
-term :: Parser Expression
-term = try arrayAccess
+arithTerm :: Parser Expression
+arithTerm = try arrayAccess
          <|> try (Constant <$> numberLiteral)
          <|> try functionCall
          <|> try identifier
          <|> try castExpr
-         <|> try (parens expression)
+         <|> try (parens arithExpression)
+         <?> "arithmetic term"
+compTerm :: Parser Expression
+compTerm = arithTerm
+        <?> "comparison term"
+condTerm :: Parser Expression
+condTerm = try compExpression
+        <|> try (parens compExpression)
+        <?> "conditional term"
 
-anyOp :: Parser BinOp
-anyOp = try compOp
-    <|> try additiveOp
-    <|> try multiplicativeOp
-
-binary s f = Ex.Infix (reservedOp s >> return (`BinaryExpression` f))
-
-table = [[binary "*" MUL Ex.AssocLeft,
-          binary "/" DIV Ex.AssocLeft]
-        ,[binary "+" ADD Ex.AssocLeft,
-          binary "-" SUB Ex.AssocLeft]
-        ,[binary "<" LESS Ex.AssocLeft,
-          binary "<=" LESS_EQUALS Ex.AssocLeft,
-          binary ">" GREATER Ex.AssocLeft,
-          binary ">=" GREATER_EQUALS Ex.AssocLeft,
-          binary "==" EQUALS Ex.AssocLeft,
-          binary "!=" NOT_EQUALS Ex.AssocLeft]
-        ,[binary "and" AND Ex.AssocLeft,
-          binary "or" OR Ex.AssocLeft]]
-
-expression :: Parser Expression
-expression = Ex.buildExpressionParser table term
+arithExpression :: Parser Expression
+arithExpression = Ex.buildExpressionParser tableArith arithTerm
+        <?> "arithmetic expression"
+compExpression :: Parser Expression
+compExpression = Ex.buildExpressionParser tableComp compTerm
+        <?> "comparison expression"
+condExpression :: Parser Expression
+condExpression = Ex.buildExpressionParser tableCond condTerm
+        <?> "conditional expression"
 
 castExpr :: Parser Expression
 castExpr = parens (
     TypeCast
-        <$> expression 
+        <$> arithExpression 
         <*> primitiveTypeName <* reserved "as"
         <?> "Cast Expression"
     )
@@ -198,12 +189,12 @@ functionCall = FunctionCall
     <?> "Function Call"
 
 argument :: Parser Expression
-argument = expression
+argument = arithExpression
 
 arrayAccess :: Parser Expression
 arrayAccess = ArrayAccess
     <$> identifier
-    <*> brackets (many expression)
+    <*> brackets (many arithExpression)
     <?> "Array Access"
 
 
