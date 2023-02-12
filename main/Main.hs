@@ -4,6 +4,7 @@ import Data.Semigroup ((<>))
 
 import Dot (generateDotFile)
 import Parser (parseProgram)
+import ConstantFolding (foldConstants)
 import Data.List (genericTake)
 import System.IO
 
@@ -55,5 +56,6 @@ run (CmdOption sourceFile destinationFile dotFile) = do
   case ast of
     Left err -> print err
     Right program -> do
-      print program
-      generateDotFile dotFile program
+      let cfProg = foldConstants program
+      print cfProg
+      generateDotFile dotFile cfProg
