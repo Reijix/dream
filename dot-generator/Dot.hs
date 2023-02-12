@@ -1,4 +1,4 @@
-module Dot where
+module Dot (generateDotFile) where
 
 import Parser
 import Syntax

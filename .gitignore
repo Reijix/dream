@@ -100,3 +100,7 @@ bench.html
 # binary files
 dreamc
 dreamci
+
+# dot files
+*.dot
+*.pdf
