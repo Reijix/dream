@@ -62,7 +62,7 @@ visitDeclaration state file (FunctionDeclaration ident params retType block) = d
 visitDeclaration state file (ParameterDeclaration ident typeName) = do
     newState <- printNode file "ParameterDeclaration" state
     newState <- visitExpression newState file ident
-    newState <- visitTypename newState file typeName
+    newState <- visitTypeName newState file typeName
     createArrow file newState
 
 visitBlock :: DotState -> Handle -> Block -> IO DotState
@@ -108,7 +108,7 @@ visitTypeName state file (PrimitiveTypeName pType) = do
         INT -> printNode file "<int>" state
         REAL -> printNode file "<real>" state
     createArrow file newState
-visitTypename state file (ArrayTypeName pType accesses) = do
+visitTypeName state file (ArrayTypeName pType accesses) = do
     newState <- visitTypeName state file pType
     newState <- foldM (`visitExpression` file) newState accesses
     createArrow file newState
