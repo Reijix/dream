@@ -24,6 +24,13 @@ library parser
     hs-source-dirs:   parser
     default-language: Haskell2010
 
+library analysis
+    exposed-modules:  NameAnalysis
+    build-depends:    base ^>=4.16.1.0,
+                      containers
+    hs-source-dirs:   analysis
+    default-language: Haskell2010
+
 library dot
     exposed-modules:  Dot
     build-depends:    base ^>=4.16.1.0,
@@ -51,7 +58,8 @@ executable dreamc
                       parser,
                       optparse-applicative,
                       dot,
-                      constantfolding
+                      constantfolding,
+                      analysis
     hs-source-dirs:   main
     default-language: Haskell2010
 executable dreamci
