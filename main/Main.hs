@@ -5,6 +5,7 @@ import Data.Semigroup ((<>))
 import Dot (generateDotFile)
 import Parser (parseProgram)
 import ConstantFolding (foldConstants)
+import NameAnalysis (doNameAnalysis)
 import Data.List (genericTake)
 import System.IO
 
@@ -56,6 +57,9 @@ run (CmdOption sourceFile destinationFile dotFile) = do
   case ast of
     Left err -> print err
     Right program -> do
+      -- do constantFolding
       let cfProg = foldConstants program
+      -- do nameAnalysis
+      let symbTable = doNameAnalysis program
       print cfProg
       generateDotFile dotFile cfProg
