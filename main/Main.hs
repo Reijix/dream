@@ -7,7 +7,7 @@ import Parser (parseProgram)
 import ConstantFolding (foldConstants)
 import NameAnalysis (doNameAnalysis)
 import Data.List (genericTake)
-import System.IO
+import System.IO ( hGetContents, openFile, IOMode(ReadMode) )
 
 data CmdOption = CmdOption
   {
