@@ -1,48 +1,53 @@
-module NameAnalysis (Symbol, SymbolTable, symbolForDeclaration, symbolForExpression, emptySymbolTable, constructSymbolTable) where
+module NameAnalysis (doNameAnalysis) where
+import SymbolTable
+import Symbol
+import Syntax
+import Data.Set ( Set, empty, insert )
 
-import Data.Map (Map, (!), empty, lookup, insert)
-import Prelude hiding (lookup)
-import Syntax ( Expression, Declaration )
+type DefinitionTable = Set String
+type NAState = ([DefinitionTable], SymbolTable)
 
-data Symbol = Symbol
-
-data SymbolNode
-    = SDeclaration Declaration
-    | SExpression Expression
-    deriving (Eq, Ord)
-
-type SymbolTable = (Map SymbolNode Int, Map Int Symbol, Int) -- idxs, symbols, nextIdx
-
-
--- inner functions
-getSymbol :: SymbolNode -> SymbolTable -> Maybe Symbol
-getSymbol node (idxs, symbols, _) = 
-    let 
-        index = lookup node idxs
-    in
-        case index of
-            Nothing -> Nothing
-            Just idx -> lookup idx symbols
-insertSymbol :: SymbolNode -> Symbol -> SymbolTable -> SymbolTable
-insertSymbol node symbol (idxs, symbols, nextIdx) = (new_idxs, new_symbols, nextIdx + 1)
+-- open new context and go over declarations
+-- first go over global variables and then over functions
+-- TODO prefill DefinitionTable with prelude definitions
+doNameAnalysis :: Program -> NAState
+doNameAnalysis (Program decls) = stateAfterFunctions
     where
-        new_idxs = insert node nextIdx idxs
-        new_symbols = insert nextIdx symbol symbols
+        globalVariables = [var | var@(VariableDeclaration {}) <- decls]
+        functionDeclarations = [fun | fun@(FunctionDeclaration {}) <- decls]
+        initialState = ([empty], emptySymbolTable)
+        stateAfterGlobalVariables = foldr visitGlobalVariable initialState globalVariables
+        stateAfterFunctions = foldr visitFunctionDeclaration stateAfterGlobalVariables functionDeclarations
 
--- exported functions (mostly wrappers)
-symbolForDeclaration :: Declaration -> SymbolTable -> Maybe Symbol
-symbolForDeclaration = getSymbol . SDeclaration
-symbolForExpression :: Expression -> SymbolTable -> Maybe Symbol
-symbolForExpression = getSymbol . SExpression
+visitGlobalVariable :: Declaration -> NAState -> NAState
+visitGlobalVariable decl@(VariableDeclaration (Identifier name) tName) (dt:dts, st) = (new_dt:dts, new_st)
+    where
+        -- TODO check if variable already defined
+        new_dt = insert name dt
+        new_st = insertDeclarationSymbol decl symbol st
+        symbol = Symbol name TDummy decl GLOBAL_SCOPE 
 
-insertDeclarationSymbol :: Declaration -> Symbol -> SymbolTable -> SymbolTable
-insertDeclarationSymbol = insertSymbol . SDeclaration 
-insertExpressionSymbol :: Expression -> Symbol -> SymbolTable -> SymbolTable
-insertExpressionSymbol = insertSymbol . SExpression
+visitFunctionDeclaration :: Declaration -> NAState -> NAState
+-- TODO check if symbol already defined
+visitFunctionDeclaration decl@(FunctionDeclaration (Identifier name) params retType block) (dt:dts, st) = (new_dts, new_st)
+    where
+        dt_with_fun = insert name dt
+        inner_dts = empty:dt_with_fun:dts -- open new scope
+        -- visit parameters
+        inner_st = insertDeclarationSymbol decl symbol st
+        symbol = Symbol name TDummy decl FUNCTION_SCOPE
+        param_st = foldr visitParameterDeclaration (inner_dts, inner_st) params
+        -- visit block
+        (_:new_dts, new_st) = visitBlock block param_st -- close scope
 
-emptySymbolTable :: SymbolTable
-emptySymbolTable = (empty, empty, 0)
+-- TODO IMPLEMENT
+visitParameterDeclaration :: Declaration -> NAState -> NAState
+visitParameterDeclaration decl@(ParameterDeclaration (Identifier name) tName) (dt:dts, st) = (dt:dts, st)
 
--- TODO add prelude definitions here
-constructSymbolTable :: SymbolTable
-constructSymbolTable = (empty, empty, 0)
+-- TODO IMPLEMENT
+visitBlock :: Block -> NAState -> NAState
+visitBlock (Block decls stmnts) (dt:dts, st) = (dt:dts, st)
+
+-- TODO IMPLEMENT
+visitExpression :: Expression -> NAState -> NAState
+visitExpression expr state = state
