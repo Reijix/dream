@@ -89,7 +89,7 @@ visitBlock :: NAState -> Block -> NAState
 visitBlock (dts, st) (Block decls stmnts) = (dts, new_st)
     where
         -- visit declarations
-        (inner_dts, inner_st) = foldl' visitLocalVariable (empty:dts, st) decls -- TODO optimization, we dont need to pass all of dts in here
+        (inner_dts, inner_st) = foldl' visitLocalVariable (empty:dts, st) decls
         -- visit statements
         (_, new_st) = foldl' visitStatement (inner_dts, inner_st) stmnts
 
