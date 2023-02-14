@@ -17,8 +17,10 @@ data Symbol = Symbol {
     symbolType :: Type,                 -- type
     symbolDeclaration :: Declaration,   -- node where this was declared
     symbolScope :: Scope                -- scope in which it was declared
-    } deriving (Show)
+    }
 
+instance Show Symbol where
+    show (Symbol ident _ _ _) = "Symbol '" ++ ident ++ "'"
 
 -- dummy declaration for prelude definition
 dummyDeclaration :: Declaration

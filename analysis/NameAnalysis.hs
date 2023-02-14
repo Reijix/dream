@@ -20,9 +20,14 @@ doNameAnalysis prog = st
         insertSymb dt symb@(Symbol name _ _ _) = insert name symb dt
 
 -- helper function for retrieving the symbol for a given identifier, throws error if symbol not defined
-getSymbol :: String -> [DefinitionTable] -> Symbol
-getSymbol name [] = error ("Symbol with name: " ++ name ++ " is not defined!")
-getSymbol name (dt:dts) = fromMaybe (getSymbol name dts) (lookup name dt)
+getSymbol :: String -> [DefinitionTable] -> Maybe Symbol
+getSymbol name [] = Nothing
+getSymbol name (dt:dts) = 
+    case mSymbol of
+        Nothing -> getSymbol name dts
+        Just symbol -> Just symbol
+    where
+        mSymbol = lookup name dt
 
 -- open new context and go over declarations
 -- first go over global variables and then over functions
@@ -32,7 +37,17 @@ visitProgram state (Program decls) = stateAfterFunctions
         globalVariables = [var | var@(VariableDeclaration {}) <- decls]
         functionDeclarations = [fun | fun@(FunctionDeclaration {}) <- decls]
         stateAfterGlobalVariables = foldl' visitGlobalVariable state globalVariables
-        stateAfterFunctions = foldl' visitFunctionDeclaration stateAfterGlobalVariables functionDeclarations
+        stateAfterFunCollection = foldl' collectFunctionSymbols stateAfterGlobalVariables functionDeclarations
+        stateAfterFunctions = foldl' visitFunctionDeclaration stateAfterFunCollection functionDeclarations
+
+collectFunctionSymbols :: NAState -> Declaration -> NAState
+collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name) params retType block) =
+    if notMember name dt then (new_dt:dts, new_st)
+    else error ("Error during nameanalysis, functiondeclaration " ++ name ++ ", already defined!")
+    where
+        symbol = Symbol name TDummy decl FUNCTION_SCOPE
+        new_dt = insert name symbol dt
+        new_st = insertDeclarationSymbol decl symbol st
 
 visitGlobalVariable :: NAState -> Declaration -> NAState
 visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName) = 
@@ -44,19 +59,13 @@ visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tNa
         symbol = Symbol name TDummy decl GLOBAL_SCOPE
 
 visitFunctionDeclaration :: NAState -> Declaration -> NAState
-visitFunctionDeclaration (dt:dts, st) decl@(FunctionDeclaration (Identifier name) params retType block) = 
-    if notMember name dt then (new_dt:dts, new_st)
-    else error ("Error during nameanalysis, functiondeclaration " ++ name ++ ", already defined!")
+visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name) params retType block) = (dts, new_st)
     where
-        new_dt = insert name symbol dt
-        inner_dts = empty:new_dt:dts -- open new scope
+        inner_dts = empty:dts -- open new scope
         -- visit parameters
-        inner_st = insertDeclarationSymbol decl symbol st
-        symbol = Symbol name TDummy decl FUNCTION_SCOPE
-        param_st = foldl' visitParameterDeclaration (inner_dts, inner_st) params
+        param_state = foldl' visitParameterDeclaration (inner_dts, st) params
         -- visit block
-        (_, new_st) = visitBlock param_st block
-visitFunctionDeclaration (dts, st) decl = error $ "visitFunctionDeclaration was called with:\n" ++ show decl ++ "\nand dts:\n" ++ show dts
+        (_, new_st) = visitBlock param_state block
 
 visitParameterDeclaration :: NAState -> Declaration -> NAState
 visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier name) tName) = 
@@ -99,8 +108,10 @@ visitExpression state (ArrayAccess expr exprs) = foldl' visitExpression (visitEx
 visitExpression state (BinaryExpression e1 op e2) = visitExpression state e1 `visitExpression` e2
 visitExpression state (Constant _) = state
 visitExpression state (FunctionCall expr exprs) = foldl' visitExpression (visitExpression state expr) exprs
-visitExpression (dts, st) expr@(Identifier name) = (dts, new_st)
+visitExpression (dts, st) expr@(Identifier name) = 
+    case symbol of
+        Nothing -> error $ "Identifier is used but not defined: " ++ name ++ "\ndts is:\n" ++ show dts
+        Just symbol -> (dts, insertExpressionSymbol expr symbol st)
     where
         symbol = getSymbol name dts -- throws error if symbol is not defined
-        new_st = insertExpressionSymbol expr symbol st
 visitExpression state (TypeCast e1 tName) = visitExpression state e1
