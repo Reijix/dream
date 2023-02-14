@@ -5,6 +5,7 @@ import Syntax
 import Data.Map ( Map, lookup, empty, insert, notMember )
 import Prelude hiding ( lookup )
 import Data.Maybe ( fromMaybe )
+import Data.Foldable ( foldl' )
 
 type DefinitionTable = Map String Symbol
 type NAState = ([DefinitionTable], SymbolTable)
@@ -13,10 +14,10 @@ type NAState = ([DefinitionTable], SymbolTable)
 doNameAnalysis :: Program -> SymbolTable
 doNameAnalysis prog = st
     where
-        (_, st) = visitProgram prog ([preludeDefinitions], emptySymbolTable)
-        preludeDefinitions = foldr insertSymb empty preludeSymbols
-        insertSymb :: Symbol -> DefinitionTable -> DefinitionTable
-        insertSymb symb@(Symbol name _ _ _) = insert name symb
+        (_, st) = visitProgram ([preludeDefinitions], emptySymbolTable) prog
+        preludeDefinitions = foldl' insertSymb empty preludeSymbols
+        insertSymb :: DefinitionTable -> Symbol -> DefinitionTable
+        insertSymb dt symb@(Symbol name _ _ _) = insert name symb dt
 
 -- helper function for retrieving the symbol for a given identifier, throws error if symbol not defined
 getSymbol :: String -> [DefinitionTable] -> Symbol
@@ -25,16 +26,16 @@ getSymbol name (dt:dts) = fromMaybe (getSymbol name dts) (lookup name dt)
 
 -- open new context and go over declarations
 -- first go over global variables and then over functions
-visitProgram :: Program -> NAState -> NAState
-visitProgram (Program decls) state = stateAfterFunctions
+visitProgram :: NAState -> Program -> NAState
+visitProgram state (Program decls) = stateAfterFunctions
     where
         globalVariables = [var | var@(VariableDeclaration {}) <- decls]
         functionDeclarations = [fun | fun@(FunctionDeclaration {}) <- decls]
-        stateAfterGlobalVariables = foldr visitGlobalVariable state globalVariables
-        stateAfterFunctions = foldr visitFunctionDeclaration stateAfterGlobalVariables functionDeclarations
+        stateAfterGlobalVariables = foldl' visitGlobalVariable state globalVariables
+        stateAfterFunctions = foldl' visitFunctionDeclaration stateAfterGlobalVariables functionDeclarations
 
-visitGlobalVariable :: Declaration -> NAState -> NAState
-visitGlobalVariable decl@(VariableDeclaration (Identifier name) tName) (dt:dts, st) = 
+visitGlobalVariable :: NAState -> Declaration -> NAState
+visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName) = 
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, global variable " ++ name ++ ", multiple definitions!")
     where
@@ -42,8 +43,8 @@ visitGlobalVariable decl@(VariableDeclaration (Identifier name) tName) (dt:dts, 
         new_st = insertDeclarationSymbol decl symbol st
         symbol = Symbol name TDummy decl GLOBAL_SCOPE
 
-visitFunctionDeclaration :: Declaration -> NAState -> NAState
-visitFunctionDeclaration decl@(FunctionDeclaration (Identifier name) params retType block) (dt:dts, st) = 
+visitFunctionDeclaration :: NAState -> Declaration -> NAState
+visitFunctionDeclaration (dt:dts, st) decl@(FunctionDeclaration (Identifier name) params retType block) = 
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, functiondeclaration " ++ name ++ ", already defined!")
     where
@@ -52,13 +53,13 @@ visitFunctionDeclaration decl@(FunctionDeclaration (Identifier name) params retT
         -- visit parameters
         inner_st = insertDeclarationSymbol decl symbol st
         symbol = Symbol name TDummy decl FUNCTION_SCOPE
-        param_st = foldr visitParameterDeclaration (inner_dts, inner_st) params
+        param_st = foldl' visitParameterDeclaration (inner_dts, inner_st) params
         -- visit block
-        (_, new_st) = visitBlock block param_st
-visitFunctionDeclaration decl (dts, st) = error $ "visitFunctionDeclaration was called with:\n" ++ show decl ++ "\nand dts:\n" ++ show dts
+        (_, new_st) = visitBlock param_st block
+visitFunctionDeclaration (dts, st) decl = error $ "visitFunctionDeclaration was called with:\n" ++ show decl ++ "\nand dts:\n" ++ show dts
 
-visitParameterDeclaration :: Declaration -> NAState -> NAState
-visitParameterDeclaration decl@(ParameterDeclaration (Identifier name) tName) (dt:dts, st) = 
+visitParameterDeclaration :: NAState -> Declaration -> NAState
+visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier name) tName) = 
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, parameterdeclaration " ++ name ++ ", already defined!")
     where
@@ -66,8 +67,8 @@ visitParameterDeclaration decl@(ParameterDeclaration (Identifier name) tName) (d
         new_st = insertDeclarationSymbol decl symbol st
         symbol = Symbol name TDummy decl PARAMETER_SCOPE
 
-visitLocalVariable :: Declaration -> NAState -> NAState
-visitLocalVariable decl@(VariableDeclaration (Identifier name) tName) (dt:dts, st) =
+visitLocalVariable :: NAState -> Declaration -> NAState
+visitLocalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName) =
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, local variable " ++ name ++ ", already defined!")
     where
@@ -75,31 +76,31 @@ visitLocalVariable decl@(VariableDeclaration (Identifier name) tName) (dt:dts, s
         new_st = insertDeclarationSymbol decl symbol st
         symbol = Symbol name TDummy decl LOCAL_SCOPE
 
-visitBlock :: Block -> NAState -> NAState
-visitBlock (Block decls stmnts) (dts, st) = (dts, new_st)
+visitBlock :: NAState -> Block -> NAState
+visitBlock (dts, st) (Block decls stmnts) = (dts, new_st)
     where
         -- visit declarations
-        (inner_dts, inner_st) = foldr visitLocalVariable (empty:dts, st) decls -- TODO optimization, we dont need to pass all of dts in here
+        (inner_dts, inner_st) = foldl' visitLocalVariable (empty:dts, st) decls -- TODO optimization, we dont need to pass all of dts in here
         -- visit statements
-        (_, new_st) = foldr visitStatement (inner_dts, inner_st) stmnts
+        (_, new_st) = foldl' visitStatement (inner_dts, inner_st) stmnts
 
 
-visitStatement :: Statement -> NAState -> NAState
-visitStatement (AssignStatement e1 e2) state = visitExpression e2 $ visitExpression e1 state
-visitStatement (FunctionCallStatement e1) state = visitExpression e1 state
-visitStatement (IfStatement e1 thenB (Just elseB)) state = visitBlock elseB $ visitBlock thenB $ visitExpression e1 state
-visitStatement (IfStatement e1 thenB Nothing) state = visitBlock thenB $ visitExpression e1 state
-visitStatement (WhileStatement e1 block) state = visitBlock block $ visitExpression e1 state
-visitStatement (ReturnStatement (Just e)) state = visitExpression e state
-visitStatement (ReturnStatement Nothing) state = state
+visitStatement :: NAState -> Statement -> NAState
+visitStatement state (AssignStatement e1 e2) = visitExpression state e1 `visitExpression` e2
+visitStatement state (FunctionCallStatement e1) = visitExpression state e1
+visitStatement state (IfStatement e1 thenB (Just elseB)) = visitExpression state e1 `visitBlock` thenB `visitBlock` elseB
+visitStatement state (IfStatement e1 thenB Nothing) = visitExpression state e1 `visitBlock` thenB
+visitStatement state (WhileStatement e1 block) = visitExpression state e1 `visitBlock` block
+visitStatement state (ReturnStatement (Just e)) = visitExpression state e
+visitStatement state (ReturnStatement Nothing) = state
 
-visitExpression :: Expression -> NAState -> NAState
-visitExpression (ArrayAccess expr exprs) state = foldr visitExpression (visitExpression expr state) exprs
-visitExpression (BinaryExpression e1 op e2) state = visitExpression e2 $ visitExpression e1 state
-visitExpression (Constant _) state = state
-visitExpression (FunctionCall expr exprs) state = foldr visitExpression (visitExpression expr state) exprs
-visitExpression expr@(Identifier name) (dts, st) = (dts, new_st)
+visitExpression :: NAState -> Expression -> NAState
+visitExpression state (ArrayAccess expr exprs) = foldl' visitExpression (visitExpression state expr) exprs
+visitExpression state (BinaryExpression e1 op e2) = visitExpression state e1 `visitExpression` e2
+visitExpression state (Constant _) = state
+visitExpression state (FunctionCall expr exprs) = foldl' visitExpression (visitExpression state expr) exprs
+visitExpression (dts, st) expr@(Identifier name) = (dts, new_st)
     where
         symbol = getSymbol name dts -- throws error if symbol is not defined
         new_st = insertExpressionSymbol expr symbol st
-visitExpression (TypeCast e1 tName) state = visitExpression e1 state
+visitExpression state (TypeCast e1 tName) = visitExpression state e1
