@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module Main where
 import Options.Applicative
 import Data.Semigroup ((<>))
@@ -58,8 +59,8 @@ run (CmdOption sourceFile destinationFile dotFile) = do
     Left err -> print err
     Right program -> do
       -- do constantFolding
-      let cfProg = foldConstants program
+      let !cfProg = foldConstants program
       -- do nameAnalysis
-      let symbTable = doNameAnalysis program
+      let !symbTable = doNameAnalysis program
       print cfProg
       generateDotFile dotFile cfProg

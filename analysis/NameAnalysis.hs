@@ -2,7 +2,7 @@ module NameAnalysis (doNameAnalysis) where
 import SymbolTable
 import Symbol
 import Syntax
-import Data.Map ( Map, lookup, empty, insert, notMember, member )
+import Data.Map ( Map, lookup, empty, insert, notMember )
 import Prelude hiding ( lookup )
 import Data.Maybe ( fromMaybe )
 
@@ -13,21 +13,18 @@ type NAState = ([DefinitionTable], SymbolTable)
 doNameAnalysis :: Program -> SymbolTable
 doNameAnalysis prog = st
     where
-        (_, st) = visitProgram prog ([empty], emptySymbolTable)
+        (_, st) = visitProgram prog ([preludeDefinitions], emptySymbolTable)
+        preludeDefinitions = foldr insertSymb empty preludeSymbols
+        insertSymb :: Symbol -> DefinitionTable -> DefinitionTable
+        insertSymb symb@(Symbol name _ _ _) = insert name symb
 
 -- helper function for retrieving the symbol for a given identifier, throws error if symbol not defined
 getSymbol :: String -> [DefinitionTable] -> Symbol
 getSymbol name [] = error ("Symbol with name: " ++ name ++ " is not defined!")
-getSymbol name (dt:dts) = 
-    case ret of
-        Nothing -> getSymbol name dts
-        Just symbol -> symbol
-    where
-        ret = lookup name dt
+getSymbol name (dt:dts) = fromMaybe (getSymbol name dts) (lookup name dt)
 
 -- open new context and go over declarations
 -- first go over global variables and then over functions
--- TODO prefill DefinitionTable with prelude definitions
 visitProgram :: Program -> NAState -> NAState
 visitProgram (Program decls) state = stateAfterFunctions
     where
@@ -47,17 +44,18 @@ visitGlobalVariable decl@(VariableDeclaration (Identifier name) tName) (dt:dts, 
 
 visitFunctionDeclaration :: Declaration -> NAState -> NAState
 visitFunctionDeclaration decl@(FunctionDeclaration (Identifier name) params retType block) (dt:dts, st) = 
-    if notMember name dt then (dts, new_st)
+    if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, functiondeclaration " ++ name ++ ", already defined!")
     where
-        dt_with_fun = insert name symbol dt
-        inner_dts = empty:dt_with_fun:dts -- open new scope
+        new_dt = insert name symbol dt
+        inner_dts = empty:new_dt:dts -- open new scope
         -- visit parameters
         inner_st = insertDeclarationSymbol decl symbol st
         symbol = Symbol name TDummy decl FUNCTION_SCOPE
         param_st = foldr visitParameterDeclaration (inner_dts, inner_st) params
         -- visit block
         (_, new_st) = visitBlock block param_st
+visitFunctionDeclaration decl (dts, st) = error $ "visitFunctionDeclaration was called with:\n" ++ show decl ++ "\nand dts:\n" ++ show dts
 
 visitParameterDeclaration :: Declaration -> NAState -> NAState
 visitParameterDeclaration decl@(ParameterDeclaration (Identifier name) tName) (dt:dts, st) = 
