@@ -1,4 +1,5 @@
 func main () {
+    f(x);
     if x == 5
     then
         var y : real;
@@ -7,4 +8,14 @@ func main () {
     end;
 } end
 
+func f () : int {
+    return 5;
+} end
+
+func g () : int {
+    return 5;
+} end
+
 var x : int
+
+var y : real

@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module Main where
 import Options.Applicative
 import Data.Semigroup ((<>))
@@ -5,8 +6,9 @@ import Data.Semigroup ((<>))
 import Dot (generateDotFile)
 import Parser (parseProgram)
 import ConstantFolding (foldConstants)
+import NameAnalysis (doNameAnalysis)
 import Data.List (genericTake)
-import System.IO
+import System.IO ( hGetContents, openFile, IOMode(ReadMode) )
 
 data CmdOption = CmdOption
   {
@@ -56,6 +58,9 @@ run (CmdOption sourceFile destinationFile dotFile) = do
   case ast of
     Left err -> print err
     Right program -> do
-      let cfProg = foldConstants program
+      -- do constantFolding
+      let !cfProg = foldConstants program
+      -- do nameAnalysis
+      let !symbTable = doNameAnalysis program
       print cfProg
       generateDotFile dotFile cfProg

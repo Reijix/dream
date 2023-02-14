@@ -1,10 +1,10 @@
 module Dot (generateDotFile) where
 
-import Parser
 import Syntax
 import Control.Monad (foldM)
 
 import System.IO
+    ( hClose, hPutStr, openFile, Handle, IOMode(WriteMode) )
 import GHC.Generics (D)
 
 data DotState = DotState {
