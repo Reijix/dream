@@ -2,23 +2,28 @@ module NameAnalysis (doNameAnalysis) where
 import SymbolTable
 import Symbol
 import Syntax
-import Data.Set ( Set, empty, insert, notMember, member )
+import Data.Map ( Map, lookup, empty, insert, notMember, member )
+import Prelude hiding ( lookup )
 import Data.Maybe ( fromMaybe )
 
-type DefinitionTable = Set String
+type DefinitionTable = Map String Symbol
 type NAState = ([DefinitionTable], SymbolTable)
 
--- TODO for each expression node we need to make a new entry in the symbolTable!!!
--- right now expression nodes are not assigned to symbols!
-
+-- runner method for nameanalysis, only this needs to be exported
 doNameAnalysis :: Program -> SymbolTable
 doNameAnalysis prog = st
     where
         (_, st) = visitProgram prog ([empty], emptySymbolTable)
 
--- helper function for checking if a string is contained in a list of definitiontables
-isDefined :: String -> [DefinitionTable] -> Bool
-isDefined name (dt:dts) = member name dt || isDefined name dts 
+-- helper function for retrieving the symbol for a given identifier, throws error if symbol not defined
+getSymbol :: String -> [DefinitionTable] -> Symbol
+getSymbol name [] = error ("Symbol with name: " ++ name ++ " is not defined!")
+getSymbol name (dt:dts) = 
+    case ret of
+        Nothing -> getSymbol name dts
+        Just symbol -> symbol
+    where
+        ret = lookup name dt
 
 -- open new context and go over declarations
 -- first go over global variables and then over functions
@@ -36,7 +41,7 @@ visitGlobalVariable decl@(VariableDeclaration (Identifier name) tName) (dt:dts, 
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, global variable " ++ name ++ ", multiple definitions!")
     where
-        new_dt = insert name dt
+        new_dt = insert name symbol dt
         new_st = insertDeclarationSymbol decl symbol st
         symbol = Symbol name TDummy decl GLOBAL_SCOPE
 
@@ -45,7 +50,7 @@ visitFunctionDeclaration decl@(FunctionDeclaration (Identifier name) params retT
     if notMember name dt then (dts, new_st)
     else error ("Error during nameanalysis, functiondeclaration " ++ name ++ ", already defined!")
     where
-        dt_with_fun = insert name dt
+        dt_with_fun = insert name symbol dt
         inner_dts = empty:dt_with_fun:dts -- open new scope
         -- visit parameters
         inner_st = insertDeclarationSymbol decl symbol st
@@ -59,7 +64,7 @@ visitParameterDeclaration decl@(ParameterDeclaration (Identifier name) tName) (d
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, parameterdeclaration " ++ name ++ ", already defined!")
     where
-        new_dt = insert name dt
+        new_dt = insert name symbol dt
         new_st = insertDeclarationSymbol decl symbol st
         symbol = Symbol name TDummy decl PARAMETER_SCOPE
 
@@ -68,7 +73,7 @@ visitLocalVariable decl@(VariableDeclaration (Identifier name) tName) (dt:dts, s
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, local variable " ++ name ++ ", already defined!")
     where
-        new_dt = insert name dt
+        new_dt = insert name symbol dt
         new_st = insertDeclarationSymbol decl symbol st
         symbol = Symbol name TDummy decl LOCAL_SCOPE
 
@@ -95,5 +100,8 @@ visitExpression (ArrayAccess expr exprs) state = foldr visitExpression (visitExp
 visitExpression (BinaryExpression e1 op e2) state = visitExpression e2 $ visitExpression e1 state
 visitExpression (Constant _) state = state
 visitExpression (FunctionCall expr exprs) state = foldr visitExpression (visitExpression expr state) exprs
-visitExpression (Identifier name) state@(dts, st) = if isDefined name dts then state else error ("Error during nameanalysis, identifier in expression " ++ name ++ " not defined!\nSymboltable is:\n" ++ show st)
+visitExpression expr@(Identifier name) (dts, st) = (dts, new_st)
+    where
+        symbol = getSymbol name dts -- throws error if symbol is not defined
+        new_st = insertExpressionSymbol expr symbol st
 visitExpression (TypeCast e1 tName) state = visitExpression e1 state
