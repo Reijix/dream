@@ -228,5 +228,5 @@ contents p = do
 parseExpr :: String -> Either ParseError Expr
 parseExpr = parse (contents arithExpr) "<stdin>"
 -}
-parseProgram :: String -> Either ParseError Program
-parseProgram = parse (contents program) "<stdin>"
+parseProgram :: SourceName -> String -> Either ParseError Program
+parseProgram = parse (contents program)

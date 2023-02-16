@@ -54,7 +54,7 @@ run (CmdOption sourceFile destinationFile dotFile) = do
   source <- openFile sourceFile ReadMode
   sourceText <- hGetContents source
 
-  let ast = parseProgram sourceText
+  let ast = parseProgram sourceFile sourceText
   case ast of
     Left err -> print err
     Right program -> do

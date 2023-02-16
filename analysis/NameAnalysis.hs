@@ -43,7 +43,7 @@ visitProgram state (Program decls) = stateAfterFunctions
 collectFunctionSymbols :: NAState -> Declaration -> NAState
 collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name) params retType block sourcePos) =
     if notMember name dt then (new_dt:dts, new_st)
-    else error ("Error during nameanalysis, functiondeclaration " ++ name ++ ", already defined!")
+    else error ("Error during nameanalysis, functiondeclaration " ++ name ++ " already defined!\nat: [" ++ show sourcePos ++ "]")
     where
         symbol = Symbol name TDummy decl FUNCTION_SCOPE
         new_dt = insert name symbol dt
@@ -52,7 +52,7 @@ collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name) 
 visitGlobalVariable :: NAState -> Declaration -> NAState
 visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName sourcePos) = 
     if notMember name dt then (new_dt:dts, new_st)
-    else error ("Error during nameanalysis, global variable " ++ name ++ ", multiple definitions!")
+    else error ("Error during nameanalysis, global variable " ++ name ++ " multiple definitions!\nat: [" ++ show sourcePos ++ "]")
     where
         new_dt = insert name symbol dt
         new_st = insertDeclarationSymbol decl symbol st
@@ -70,7 +70,7 @@ visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name) p
 visitParameterDeclaration :: NAState -> Declaration -> NAState
 visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier name) tName sourcePos) = 
     if notMember name dt then (new_dt:dts, new_st)
-    else error ("Error during nameanalysis, parameterdeclaration " ++ name ++ ", already defined!")
+    else error ("Error during nameanalysis, parameterdeclaration " ++ name ++ " already defined!\nat: [" ++ show sourcePos ++ "]")
     where
         new_dt = insert name symbol dt
         new_st = insertDeclarationSymbol decl symbol st
@@ -79,7 +79,7 @@ visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier na
 visitLocalVariable :: NAState -> Declaration -> NAState
 visitLocalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName sourcePos) =
     if notMember name dt then (new_dt:dts, new_st)
-    else error ("Error during nameanalysis, local variable " ++ name ++ ", already defined!")
+    else error ("Error during nameanalysis, local variable " ++ name ++ " already defined!\nat: [" ++ show sourcePos ++ "]")
     where
         new_dt = insert name symbol dt
         new_st = insertDeclarationSymbol decl symbol st
