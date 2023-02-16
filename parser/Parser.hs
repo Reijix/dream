@@ -33,6 +33,7 @@ variableDeclaration :: Parser Declaration
 variableDeclaration = VariableDeclaration 
     <$> (reserved "var" *> identifier)
     <*> (colon *> typeName)
+    <*> getPosition
     <?> "VariableDeclaration"
 
 functionDeclaration :: Parser Declaration
@@ -41,12 +42,14 @@ functionDeclaration = FunctionDeclaration
     <*> parens (commaSep parameterDeclaration)
     <*> optionMaybe (colon *> typeName)
     <*> (braces block <* reserved "end")
+    <*> getPosition
     <?> "FunctionDeclaration"
 
 parameterDeclaration :: Parser Declaration
 parameterDeclaration = ParameterDeclaration
     <$> identifier
     <*> (colon *> typeName)
+    <*> getPosition
     <?> "ParameterDeclaration"
 
 arrayTypeName :: Parser TypeName
@@ -82,12 +85,14 @@ statement = try functionCallStatement
 functionCallStatement :: Parser Statement
 functionCallStatement = FunctionCallStatement
     <$> functionCall
+    <*> getPosition
     <?> "FunctionCallStatement"
 
 assignStatement :: Parser Statement
 assignStatement = AssignStatement
     <$> lvalue
     <*> (reservedOp ":=" *> arithExpression)
+    <*> getPosition
     <?> "AssignStatement"
 
 ifStatement :: Parser Statement
@@ -95,24 +100,34 @@ ifStatement = IfStatement
     <$> (reserved "if" *> condExpression)
     <*> (reserved "then" *> block)
     <*> (optionMaybe (try (reserved "else" >> block)) <* reserved "end")
+    <*> getPosition
     <?> "IfStatement"
 
 whileStatement :: Parser Statement
 whileStatement = WhileStatement
     <$> (reserved "while" *> condExpression)
     <*> (reserved "do" *> block) <* reserved "end"
+    <*> getPosition
     <?> "WhileStatement"
 
 returnStatement :: Parser Statement
 returnStatement = ReturnStatement
     <$> (reserved "return" *> optionMaybe arithExpression)
+    <*> getPosition
     <?> "ReturnStatement"
 
 lvalue = try identifier
      <|> try arrayAccess
      <?> "LValue"
 
-binary s f = Ex.Infix (reservedOp s >> return (`BinaryExpression` f))
+-- binary s f = Ex.Infix (reservedOp s >> return (`BinaryExpression` f))
+binary s f = Ex.Infix fun
+    where
+        fun :: Parser (Expression -> Expression -> Expression)
+        fun = do
+            reservedOp s
+            pos <- getPosition
+            return (\e1 e2 -> BinaryExpression e1 f e2 pos)
 
 tableArith = [[binary "*" MUL Ex.AssocLeft,
                binary "/" DIV Ex.AssocLeft]
@@ -129,7 +144,7 @@ tableComp = [[binary "<" LESS Ex.AssocLeft,
 
 arithTerm :: Parser Expression
 arithTerm = try arrayAccess
-         <|> try (Constant <$> numberLiteral)
+         <|> try (Constant <$> numberLiteral <*> getPosition)
          <|> try functionCall
          <|> try identifier
          <|> try castExpr
@@ -158,6 +173,7 @@ castExpr = parens (
     TypeCast
         <$> arithExpression 
         <*> primitiveTypeName <* reserved "as"
+        <*> getPosition
         <?> "Cast Expression"
     )
 
@@ -186,6 +202,7 @@ functionCall :: Parser Expression
 functionCall = FunctionCall
     <$> identifier
     <*> parens (many argument)
+    <*> getPosition
     <?> "Function Call"
 
 argument :: Parser Expression
@@ -195,6 +212,7 @@ arrayAccess :: Parser Expression
 arrayAccess = ArrayAccess
     <$> identifier
     <*> brackets (many arithExpression)
+    <*> getPosition
     <?> "Array Access"
 
 
@@ -210,5 +228,5 @@ contents p = do
 parseExpr :: String -> Either ParseError Expr
 parseExpr = parse (contents arithExpr) "<stdin>"
 -}
-parseProgram :: String -> Either ParseError Program
-parseProgram = parse (contents program) "<stdin>"
+parseProgram :: SourceName -> String -> Either ParseError Program
+parseProgram = parse (contents program)

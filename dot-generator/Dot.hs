@@ -45,12 +45,12 @@ visitProgram state file (Program decls) = do
     foldM (`visitDeclaration` file) newState decls
 
 visitDeclaration :: DotState -> Handle -> Declaration -> IO DotState
-visitDeclaration state file (VariableDeclaration ident typeName) = do
+visitDeclaration state file (VariableDeclaration ident typeName sourcePos) = do
     newState <- printNode file "VariableDeclaration" state
     newState <- visitExpression newState file ident
     newState <- visitTypeName newState file typeName
     createArrow file newState
-visitDeclaration state file (FunctionDeclaration ident params retType block) = do
+visitDeclaration state file (FunctionDeclaration ident params retType block sourcePos) = do
     newState <- printNode file "FunctionDeclaration" state
     newState <- visitExpression newState file ident
     newState <- foldM (`visitDeclaration` file) newState params
@@ -59,7 +59,7 @@ visitDeclaration state file (FunctionDeclaration ident params retType block) = d
         Just rType -> visitTypeName newState file rType
     newState <- visitBlock newState file block
     createArrow file newState
-visitDeclaration state file (ParameterDeclaration ident typeName) = do
+visitDeclaration state file (ParameterDeclaration ident typeName sourcePos) = do
     newState <- printNode file "ParameterDeclaration" state
     newState <- visitExpression newState file ident
     newState <- visitTypeName newState file typeName
@@ -73,16 +73,16 @@ visitBlock state file (Block decls statements) = do
     createArrow file newState
 
 visitStatement :: DotState -> Handle -> Statement -> IO DotState
-visitStatement state file (AssignStatement lhs rhs) = do
+visitStatement state file (AssignStatement lhs rhs sourcePos) = do
     newState <- printNode file "AssignStatement" state
     newState <- visitExpression newState file lhs
     newState <- visitExpression newState file rhs
     createArrow file newState
-visitStatement state file (FunctionCallStatement funCall) = do
+visitStatement state file (FunctionCallStatement funCall sourcePos) = do
     newState <- printNode file "FunctionCallStatement" state
     newState <- visitExpression newState file funCall
     createArrow file newState
-visitStatement state file (IfStatement cond thenBlock elseBlock) = do
+visitStatement state file (IfStatement cond thenBlock elseBlock sourcePos) = do
     newState <- printNode file "IfStatement" state
     newState <- visitExpression newState file cond
     newState <- visitBlock newState file thenBlock
@@ -90,12 +90,12 @@ visitStatement state file (IfStatement cond thenBlock elseBlock) = do
         Nothing -> return newState
         Just tBlock -> visitBlock newState file tBlock
     createArrow file newState
-visitStatement state file (WhileStatement cond thenBlock) = do
+visitStatement state file (WhileStatement cond thenBlock sourcePos) = do
     newState <- printNode file "WhileStatement" state
     newState <- visitExpression newState file cond
     newState <- visitBlock newState file thenBlock
     createArrow file newState
-visitStatement state file (ReturnStatement aexpr) = do
+visitStatement state file (ReturnStatement aexpr sourcePos) = do
     newState <- printNode file "ReturnStatement" state
     newState <- case aexpr of
         Nothing -> return newState
@@ -114,24 +114,24 @@ visitTypeName state file (ArrayTypeName pType accesses) = do
     createArrow file newState
 
 visitExpression :: DotState -> Handle -> Expression -> IO DotState
-visitExpression state file (ArrayAccess ident accesses) = do
+visitExpression state file (ArrayAccess ident accesses sourcePos) = do
     newState <- printNode file "ArrayAccess" state
     newState <- visitExpression newState file ident
     newState <- foldM (`visitExpression` file) newState accesses
     createArrow file newState
-visitExpression state file (BinaryExpression lop op rop) = do
+visitExpression state file (BinaryExpression lop op rop sourcePos) = do
     newState <- printNode file "BinaryExpression" state
     newState <- visitExpression newState file lop
     newState <- visitBinOp newState file op
     newState <- visitExpression newState file rop
     createArrow file newState
-visitExpression state file (Constant lit) = do
+visitExpression state file (Constant lit sourcePos) = do
     newState <- case lit of
         IntLit n -> printNode file (show n) state
         RealLit n -> printNode file (show n) state
         CharLit n -> printNode file (show n) state
     createArrow file newState
-visitExpression state file (FunctionCall ident args) = do
+visitExpression state file (FunctionCall ident args sourcePos) = do
     newState <- printNode file "FunctionCall" state
     newState <- visitExpression newState file ident
     newState <- foldM (`visitExpression` file) newState args
@@ -139,7 +139,7 @@ visitExpression state file (FunctionCall ident args) = do
 visitExpression state file (Identifier name) = do
     newState <- printNode file name state
     createArrow file newState
-visitExpression state file (TypeCast expression newType) = do
+visitExpression state file (TypeCast expression newType sourcePos) = do
     newState <- printNode file "CastExpression" state
     newState <- visitExpression newState file expression
     newState <- visitTypeName newState file newType

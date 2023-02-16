@@ -1,6 +1,7 @@
 module Symbol where
 
 import Syntax ( Declaration (FunctionDeclaration), Expression (Identifier), Block (Block) )
+import Text.Parsec.Pos ( SourcePos, newPos )
 
 -- TODO move this to typeanalysis later
 data Type = TDummy deriving (Show)
@@ -23,8 +24,11 @@ instance Show Symbol where
     show (Symbol ident _ _ _) = "Symbol '" ++ ident ++ "'"
 
 -- dummy declaration for prelude definition
+preludePos :: SourcePos
+preludePos = newPos "Prelude" 0 0
+
 dummyDeclaration :: Declaration
-dummyDeclaration = FunctionDeclaration (Identifier "PreludeFunction") [] Nothing (Block [] [])
+dummyDeclaration = FunctionDeclaration (Identifier "PreludeFunction") [] Nothing (Block [] []) preludePos
 
 -- TODO add type information, when implementing typeanalysis
 preludeSymbols :: [Symbol]
