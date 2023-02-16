@@ -15,8 +15,3 @@ $ cabal run dreamc
 ```console
 $ cabal run dreamci
 ```
-
-## NOTE
-Currently I've paused working on this project, because
-1. I'm currently working through the book "Implementing Functional Languages A Tutorial" where I'm writing a compiler for a functional language ([coreLang](https://github.com/Reijix/coreLang))
-2. I will take a course on monad-based programming next semester and I think monads will make this project easier
