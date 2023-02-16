@@ -6,7 +6,7 @@ import System.Console.Haskeline
 
 process :: String -> IO ()
 process line = do
-    let res = parseProgram line
+    let res = parseProgram "<stdin>" line
     case res of
         Left err -> print err
         Right ex -> print ex
@@ -18,4 +18,4 @@ main = runInputT defaultSettings loop
         minput <- getInputLine "ready> "
         case minput of
             Nothing -> outputStrLn "Goodbye."
-            Just input -> (liftIO $ process input) >> loop
+            Just input -> liftIO (process input) >> loop
