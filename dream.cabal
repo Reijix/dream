@@ -28,7 +28,8 @@ library analysis
     exposed-modules:  NameAnalysis
     build-depends:    base ^>=4.16.1.0,
                       containers,
-                      parser
+                      parser,
+                      parsec
     other-modules:
         Symbol,
         SymbolTable

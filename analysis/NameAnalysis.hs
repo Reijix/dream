@@ -41,7 +41,7 @@ visitProgram state (Program decls) = stateAfterFunctions
         stateAfterFunctions = foldl' visitFunctionDeclaration stateAfterFunCollection functionDeclarations
 
 collectFunctionSymbols :: NAState -> Declaration -> NAState
-collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name) params retType block) =
+collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name) params retType block sourcePos) =
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, functiondeclaration " ++ name ++ ", already defined!")
     where
@@ -50,7 +50,7 @@ collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name) 
         new_st = insertDeclarationSymbol decl symbol st
 
 visitGlobalVariable :: NAState -> Declaration -> NAState
-visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName) = 
+visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName sourcePos) = 
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, global variable " ++ name ++ ", multiple definitions!")
     where
@@ -59,7 +59,7 @@ visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tNa
         symbol = Symbol name TDummy decl GLOBAL_SCOPE
 
 visitFunctionDeclaration :: NAState -> Declaration -> NAState
-visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name) params retType block) = (dts, new_st)
+visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name) params retType block sourcePos) = (dts, new_st)
     where
         inner_dts = empty:dts -- open new scope
         -- visit parameters
@@ -68,7 +68,7 @@ visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name) p
         (_, new_st) = visitBlock param_state block
 
 visitParameterDeclaration :: NAState -> Declaration -> NAState
-visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier name) tName) = 
+visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier name) tName sourcePos) = 
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, parameterdeclaration " ++ name ++ ", already defined!")
     where
@@ -77,7 +77,7 @@ visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier na
         symbol = Symbol name TDummy decl PARAMETER_SCOPE
 
 visitLocalVariable :: NAState -> Declaration -> NAState
-visitLocalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName) =
+visitLocalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName sourcePos) =
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, local variable " ++ name ++ ", already defined!")
     where
@@ -95,23 +95,23 @@ visitBlock (dts, st) (Block decls stmnts) = (dts, new_st)
 
 
 visitStatement :: NAState -> Statement -> NAState
-visitStatement state (AssignStatement e1 e2) = visitExpression state e1 `visitExpression` e2
-visitStatement state (FunctionCallStatement e1) = visitExpression state e1
-visitStatement state (IfStatement e1 thenB (Just elseB)) = visitExpression state e1 `visitBlock` thenB `visitBlock` elseB
-visitStatement state (IfStatement e1 thenB Nothing) = visitExpression state e1 `visitBlock` thenB
-visitStatement state (WhileStatement e1 block) = visitExpression state e1 `visitBlock` block
-visitStatement state (ReturnStatement (Just e)) = visitExpression state e
-visitStatement state (ReturnStatement Nothing) = state
+visitStatement state (AssignStatement e1 e2 sourcePos) = visitExpression state e1 `visitExpression` e2
+visitStatement state (FunctionCallStatement e1 sourcePos) = visitExpression state e1
+visitStatement state (IfStatement e1 thenB (Just elseB) sourcePos) = visitExpression state e1 `visitBlock` thenB `visitBlock` elseB
+visitStatement state (IfStatement e1 thenB Nothing sourcePos) = visitExpression state e1 `visitBlock` thenB
+visitStatement state (WhileStatement e1 block sourcePos) = visitExpression state e1 `visitBlock` block
+visitStatement state (ReturnStatement (Just e) sourcePos) = visitExpression state e
+visitStatement state (ReturnStatement Nothing sourcePos) = state
 
 visitExpression :: NAState -> Expression -> NAState
-visitExpression state (ArrayAccess expr exprs) = foldl' visitExpression (visitExpression state expr) exprs
-visitExpression state (BinaryExpression e1 op e2) = visitExpression state e1 `visitExpression` e2
-visitExpression state (Constant _) = state
-visitExpression state (FunctionCall expr exprs) = foldl' visitExpression (visitExpression state expr) exprs
+visitExpression state (ArrayAccess expr exprs sourcePos) = foldl' visitExpression (visitExpression state expr) exprs
+visitExpression state (BinaryExpression e1 op e2 sourcePos) = visitExpression state e1 `visitExpression` e2
+visitExpression state (Constant _ sourcePos) = state
+visitExpression state (FunctionCall expr exprs sourcePos) = foldl' visitExpression (visitExpression state expr) exprs
 visitExpression (dts, st) expr@(Identifier name) = 
     case symbol of
         Nothing -> error $ "Identifier is used but not defined: " ++ name ++ "\ndts is:\n" ++ show dts
         Just symbol -> (dts, insertExpressionSymbol expr symbol st)
     where
         symbol = getSymbol name dts -- throws error if symbol is not defined
-visitExpression state (TypeCast e1 tName) = visitExpression state e1
+visitExpression state (TypeCast e1 tName sourcePos) = visitExpression state e1

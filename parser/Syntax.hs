@@ -1,5 +1,7 @@
 module Syntax where
 
+import Text.Parsec ( SourcePos )
+
 data BinOp
     = EQUALS
     | NOT_EQUALS
@@ -34,26 +36,26 @@ data TypeName
     deriving (Eq, Ord, Show)
 
 data Statement
-    = AssignStatement Expression Expression
-    | FunctionCallStatement Expression
-    | IfStatement Expression Block (Maybe Block)
-    | WhileStatement Expression Block
-    | ReturnStatement (Maybe Expression)
+    = AssignStatement Expression Expression SourcePos
+    | FunctionCallStatement Expression SourcePos
+    | IfStatement Expression Block (Maybe Block) SourcePos
+    | WhileStatement Expression Block SourcePos
+    | ReturnStatement (Maybe Expression) SourcePos
     deriving (Eq, Ord, Show)
 
 data Declaration
-    = FunctionDeclaration Expression [Declaration] (Maybe TypeName) Block
-    | ParameterDeclaration Expression TypeName
-    | VariableDeclaration Expression TypeName
+    = FunctionDeclaration Expression [Declaration] (Maybe TypeName) Block SourcePos
+    | ParameterDeclaration Expression TypeName SourcePos
+    | VariableDeclaration Expression TypeName SourcePos
     deriving (Eq, Ord, Show)
 
 data Expression
-    = ArrayAccess Expression [Expression]
-    | BinaryExpression Expression BinOp Expression
-    | Constant Literal
-    | FunctionCall Expression [Expression]
+    = ArrayAccess Expression [Expression] SourcePos
+    | BinaryExpression Expression BinOp Expression SourcePos
+    | Constant Literal SourcePos
+    | FunctionCall Expression [Expression] SourcePos
     | Identifier String
-    | TypeCast Expression TypeName
+    | TypeCast Expression TypeName SourcePos
     deriving (Eq, Ord, Show)
 
 data Literal
