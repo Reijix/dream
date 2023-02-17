@@ -116,8 +116,8 @@ returnStatement = ReturnStatement
     <*> getPosition
     <?> "ReturnStatement"
 
-lvalue = try identifier
-     <|> try arrayAccess
+lvalue = try arrayAccess
+     <|> try identifier
      <?> "LValue"
 
 -- binary s f = Ex.Infix (reservedOp s >> return (`BinaryExpression` f))
