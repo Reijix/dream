@@ -24,7 +24,7 @@ data Symbol = Symbol {
     }
 
 instance Show Symbol where
-    show (Symbol ident _ _ _) = "Symbol '" ++ ident ++ "'"
+    show (Symbol ident sType _ _) = "[Symbol '" ++ ident ++ "' '" ++ show sType ++ "']"
 
 -- dummy declaration for prelude definition
 preludePos :: SourcePos
