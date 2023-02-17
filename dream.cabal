@@ -29,7 +29,8 @@ library analysis
     build-depends:    base ^>=4.16.1.0,
                       containers,
                       parser,
-                      parsec
+                      parsec,
+                      extra
     other-modules:
         Symbol,
         SymbolTable

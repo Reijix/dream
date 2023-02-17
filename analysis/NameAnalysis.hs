@@ -45,7 +45,7 @@ collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name) 
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, functiondeclaration " ++ name ++ " already defined!\nat: [" ++ show sourcePos ++ "]")
     where
-        symbol = Symbol name TDummy decl FUNCTION_SCOPE
+        symbol = Symbol name VoidType decl FUNCTION_SCOPE
         new_dt = insert name symbol dt
         new_st = insertDeclarationSymbol decl symbol st
 
@@ -56,7 +56,7 @@ visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tNa
     where
         new_dt = insert name symbol dt
         new_st = insertDeclarationSymbol decl symbol st
-        symbol = Symbol name TDummy decl GLOBAL_SCOPE
+        symbol = Symbol name VoidType decl GLOBAL_SCOPE
 
 visitFunctionDeclaration :: NAState -> Declaration -> NAState
 visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name) params retType block sourcePos) = (dts, new_st)
@@ -74,7 +74,7 @@ visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier na
     where
         new_dt = insert name symbol dt
         new_st = insertDeclarationSymbol decl symbol st
-        symbol = Symbol name TDummy decl PARAMETER_SCOPE
+        symbol = Symbol name VoidType decl PARAMETER_SCOPE
 
 visitLocalVariable :: NAState -> Declaration -> NAState
 visitLocalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName sourcePos) =
@@ -83,7 +83,7 @@ visitLocalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tNam
     where
         new_dt = insert name symbol dt
         new_st = insertDeclarationSymbol decl symbol st
-        symbol = Symbol name TDummy decl LOCAL_SCOPE
+        symbol = Symbol name VoidType decl LOCAL_SCOPE
 
 visitBlock :: NAState -> Block -> NAState
 visitBlock (dts, st) (Block decls stmnts) = (dts, new_st)

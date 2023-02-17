@@ -1,10 +1,13 @@
 module Symbol where
 
-import Syntax ( Declaration (FunctionDeclaration), Expression (Identifier), Block (Block) )
+import Syntax ( Declaration (FunctionDeclaration), Expression (Identifier), Block (Block), TypeName (ArrayTypeName), PrimitiveType )
 import Text.Parsec.Pos ( SourcePos, newPos )
 
--- TODO move this to typeanalysis later
-data Type = TDummy deriving (Show)
+data Type 
+    = VoidType
+    | FunctionType Type [Type]          -- returnType, parameterTypes
+    | ArrayType PrimitiveType [Int]     -- baseType,   lengths
+    | PrimType PrimitiveType deriving (Show, Eq)
 
 -- TODO maybe function_scope should be removed and instead we use global_scope...
 data Scope 
@@ -33,11 +36,11 @@ dummyDeclaration = FunctionDeclaration (Identifier "PreludeFunction") [] Nothing
 -- TODO add type information, when implementing typeanalysis
 preludeSymbols :: [Symbol]
 preludeSymbols = [
-    Symbol "writeChar" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "readChar" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "writeInt" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "readInt" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "writeReal" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "readReal" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "exit" TDummy dummyDeclaration FUNCTION_SCOPE
+    Symbol "writeChar" VoidType dummyDeclaration FUNCTION_SCOPE,
+    Symbol "readChar" VoidType dummyDeclaration FUNCTION_SCOPE,
+    Symbol "writeInt" VoidType dummyDeclaration FUNCTION_SCOPE,
+    Symbol "readInt" VoidType dummyDeclaration FUNCTION_SCOPE,
+    Symbol "writeReal" VoidType dummyDeclaration FUNCTION_SCOPE,
+    Symbol "readReal" VoidType dummyDeclaration FUNCTION_SCOPE,
+    Symbol "exit" VoidType dummyDeclaration FUNCTION_SCOPE
     ]
