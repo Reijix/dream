@@ -62,6 +62,7 @@ run (CmdOption sourceFile destinationFile dotFile) = do
     Right program -> do
       -- do constantFolding
       let !cfProg = foldConstants program
+      generateDotFile dotFile cfProg
       -- do nameAnalysis
       let !symbTable = doNameAnalysis program
       -- do typeAnalysis

@@ -31,6 +31,10 @@ getSymbol node (idxs, symbols, _) =
         case index of
             Nothing -> Nothing
             Just idx -> lookup idx symbols
+
+-- TODO insertSymbol should return the index as well
+-- then we need another method insertWithIndex, otherwise it's not possible for multiple nodes to point to the same symbol...
+
 insertSymbol :: SymbolNode -> Symbol -> SymbolTable -> SymbolTable
 insertSymbol node symbol (idxs, symbols, nextIdx) = (new_idxs, new_symbols, nextIdx + 1)
     where

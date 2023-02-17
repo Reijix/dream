@@ -1,6 +1,6 @@
 func main () {
     f(x);
-    z[2] := x + x;
+    x := z[5];
     if x == 5
     then
         var y : real;

@@ -22,13 +22,17 @@ doTypeAnalysis st prog = do
 
 visitProgram :: (SymbolTable, Program) -> Either AnalysisError (SymbolTable, Program)
 visitProgram (st, Program decls) = do
-    ret@(new_st, Program new_decls) <- foldM f (st, Program []) (reverse decls)
-    return ret
+    -- visit declarations first
+    (st1, prog1) <- foldM f (st, Program []) (reverse globalVariables)
+    (st2, prog2) <- foldM f (st1, prog1) (reverse functionDeclarations)
+    return (st2, prog2)
     where
+        globalVariables = [var | var@(VariableDeclaration {}) <- decls]
+        functionDeclarations = [fun | fun@(FunctionDeclaration {}) <- decls]
         f :: (SymbolTable, Program) -> Declaration -> Either AnalysisError (SymbolTable, Program)
         f (st, Program decls) decl = do
-            (new_st, new_decl) <- visitDeclaration (st, decl)
-            return (new_st, Program (new_decl : decls))
+            (st1, new_decl) <- visitDeclaration (st, decl)
+            return (st1, Program (new_decl : decls))
 
 
 visitDeclaration :: (SymbolTable, Declaration) -> Either AnalysisError (SymbolTable, Declaration)
