@@ -9,6 +9,7 @@ import Data.Foldable (foldl')
 import Control.Monad (foldM)
 import AnalysisError
 import Data.Either.Extra (maybeToEither)
+import Debug.Trace
 
 type DefinitionTable = Map String Symbol
 type NAState = ([DefinitionTable], SymbolTable)
@@ -37,8 +38,8 @@ getSymbol name (dt:dts) =
 -- first go over global variables and then over functions
 visitProgram :: NAState -> Program -> Either AnalysisError NAState
 visitProgram st (Program decls) = do
-    st1 <- foldM visitGlobalVariable st globalVariables
-    st2 <- foldM collectFunctionSymbols st1 functionDeclarations
+    st1@(dst1, inner_st1) <- foldM visitGlobalVariable st globalVariables
+    st2@(dst2, inner_st2) <- foldM collectFunctionSymbols st1 functionDeclarations
     foldM visitFunctionDeclaration st2 functionDeclarations
     where
         globalVariables = [var | var@(VariableDeclaration {}) <- decls]

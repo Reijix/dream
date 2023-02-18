@@ -4,6 +4,7 @@ import Data.Map ( Map, (!), empty, lookup, insert, keys )
 import Prelude hiding ( lookup )
 import Syntax ( Expression, Declaration )
 import Symbol ( Symbol (Symbol) )
+import Data.Foldable (foldl')
 
 data SymbolNode
     = SDeclaration Declaration
@@ -14,11 +15,11 @@ data SymbolNode
 type SymbolTable = (Map SymbolNode Int, Map Int Symbol, Int) -- idxs, symbols, nextIdx
 
 showSymbolTable :: SymbolTable -> String
-showSymbolTable (idxs, symbols, _) = foldl line "" idxList
+showSymbolTable (idxs, symbols, nIdx) = foldl' line "" idxList
     where
         idxList = keys idxs
         line :: String -> SymbolNode -> String
-        line string node = "at index " ++ show idx ++ " is symbol " ++ show symbol ++ "\n"
+        line string node = string ++ "at index " ++ show idx ++ " is symbol " ++ show symbol ++ "\n"
             where
                 (Just idx) = lookup node idxs
                 (Just symbol) = lookup idx symbols
