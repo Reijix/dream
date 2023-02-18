@@ -1,10 +1,9 @@
-module SymbolTable ( SymbolTable, symbolForDeclaration, symbolForExpression, insertDeclarationSymbol, insertExpressionSymbol, emptySymbolTable, constructSymbolTable, printSymbolTable ) where
+module SymbolTable ( SymbolTable, symbolForDeclaration, symbolForExpression, insertDeclarationSymbol, insertExpressionSymbol, emptySymbolTable, constructSymbolTable, printSymbolTable, updateDeclarationSymbol ) where
 
 import Data.Map ( Map, (!), empty, lookup, insert, keys )
 import Prelude hiding ( lookup )
 import Syntax ( Expression, Declaration )
-import Symbol ( Symbol )
-
+import Symbol ( Symbol (Symbol) )
 
 data SymbolNode
     = SDeclaration Declaration
@@ -32,15 +31,13 @@ getSymbol node (idxs, symbols, _) =
             Nothing -> Nothing
             Just idx -> lookup idx symbols
 
--- TODO insertSymbol should return the index as well
--- then we need another method insertWithIndex, otherwise it's not possible for multiple nodes to point to the same symbol...
-
 insertSymbol :: SymbolNode -> Symbol -> SymbolTable -> SymbolTable
 insertSymbol node symbol (idxs, symbols, nextIdx) = (new_idxs, new_symbols, nextIdx + 1)
     where
         new_idxs = insert node nextIdx idxs
         new_symbols = insert nextIdx symbol symbols
-
+    
+-- TODO change return value to Maybe
 updateSymbol :: SymbolNode -> Symbol -> SymbolTable -> SymbolTable
 updateSymbol node symbol (idxs, symbols, nextIdx) = (idxs, new_symbols, nextIdx)
     where
@@ -55,8 +52,17 @@ symbolForExpression = getSymbol . SExpression
 
 insertDeclarationSymbol :: Declaration -> Symbol -> SymbolTable -> SymbolTable
 insertDeclarationSymbol = insertSymbol . SDeclaration 
-insertExpressionSymbol :: Expression -> Symbol -> SymbolTable -> SymbolTable
-insertExpressionSymbol = insertSymbol . SExpression
+insertExpressionSymbol :: Expression -> Symbol -> SymbolTable -> Maybe SymbolTable
+insertExpressionSymbol expr symb@(Symbol _ _ decl _) (idxs, symbols, nextIdx) = do
+    -- get index of of the symbol, by checking the entry of its declaration
+    let declNode = SDeclaration decl
+    symbIdx <- lookup declNode idxs
+    -- insert new symbolNode pointing to the same index
+    let exprNode = SExpression expr
+    let newIdxs = insert exprNode symbIdx idxs
+    return (newIdxs, symbols, nextIdx)
+updateDeclarationSymbol :: Declaration -> Symbol -> SymbolTable -> SymbolTable
+updateDeclarationSymbol = updateSymbol . SDeclaration
 
 emptySymbolTable :: SymbolTable
 emptySymbolTable = (empty, empty, 0)

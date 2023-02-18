@@ -54,7 +54,7 @@ data Expression
     | BinaryExpression Expression BinOp Expression SourcePos
     | Constant Literal SourcePos
     | FunctionCall Expression [Expression] SourcePos
-    | Identifier String
+    | Identifier String SourcePos
     | TypeCast Expression TypeName SourcePos
     deriving (Eq, Ord, Show)
 

@@ -41,7 +41,7 @@ visitProgram state (Program decls) = stateAfterFunctions
         stateAfterFunctions = foldl' visitFunctionDeclaration stateAfterFunCollection functionDeclarations
 
 collectFunctionSymbols :: NAState -> Declaration -> NAState
-collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name) params retType block sourcePos) =
+collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name iSourcePos) params retType block sourcePos) =
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, functiondeclaration " ++ name ++ " already defined!\nat: [" ++ show sourcePos ++ "]")
     where
@@ -50,7 +50,7 @@ collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name) 
         new_st = insertDeclarationSymbol decl symbol st
 
 visitGlobalVariable :: NAState -> Declaration -> NAState
-visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName sourcePos) = 
+visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name iSourcePos) tName sourcePos) = 
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, global variable " ++ name ++ " multiple definitions!\nat: [" ++ show sourcePos ++ "]")
     where
@@ -59,7 +59,7 @@ visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tNa
         symbol = Symbol name VoidType decl GLOBAL_SCOPE
 
 visitFunctionDeclaration :: NAState -> Declaration -> NAState
-visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name) params retType block sourcePos) = (dts, new_st)
+visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name iSourcePos) params retType block sourcePos) = (dts, new_st)
     where
         inner_dts = empty:dts -- open new scope
         -- visit parameters
@@ -68,7 +68,7 @@ visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name) p
         (_, new_st) = visitBlock param_state block
 
 visitParameterDeclaration :: NAState -> Declaration -> NAState
-visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier name) tName sourcePos) = 
+visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier name iSourcePos) tName sourcePos) = 
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, parameterdeclaration " ++ name ++ " already defined!\nat: [" ++ show sourcePos ++ "]")
     where
@@ -77,7 +77,7 @@ visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier na
         symbol = Symbol name VoidType decl PARAMETER_SCOPE
 
 visitLocalVariable :: NAState -> Declaration -> NAState
-visitLocalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName sourcePos) =
+visitLocalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name iSourcePos) tName sourcePos) =
     if notMember name dt then (new_dt:dts, new_st)
     else error ("Error during nameanalysis, local variable " ++ name ++ " already defined!\nat: [" ++ show sourcePos ++ "]")
     where
@@ -108,10 +108,10 @@ visitExpression state (ArrayAccess expr exprs sourcePos) = foldl' visitExpressio
 visitExpression state (BinaryExpression e1 op e2 sourcePos) = visitExpression state e1 `visitExpression` e2
 visitExpression state (Constant _ sourcePos) = state
 visitExpression state (FunctionCall expr exprs sourcePos) = foldl' visitExpression (visitExpression state expr) exprs
-visitExpression (dts, st) expr@(Identifier name) = 
+visitExpression (dts, st) expr@(Identifier name iSourcePos) = 
     case symbol of
         Nothing -> error $ "Identifier is used but not defined: " ++ name ++ "\ndts is:\n" ++ show dts
-        Just symbol -> (dts, insertExpressionSymbol expr symbol st)
+        Just symbol -> (dts, fromMaybe (error "identifier has not been declared before being used!") (insertExpressionSymbol expr symbol st))
     where
         symbol = getSymbol name dts -- throws error if symbol is not defined
 visitExpression state (TypeCast e1 tName sourcePos) = visitExpression state e1

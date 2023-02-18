@@ -18,6 +18,7 @@ program = Program <$> many globalDeclaration
 identifier :: Parser Expression
 identifier = Identifier 
     <$> identifierStr
+    <*> getPosition
 
 globalDeclaration :: Parser Declaration
 globalDeclaration = try globalVariableDeclaration 

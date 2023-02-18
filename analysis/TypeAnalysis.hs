@@ -11,6 +11,37 @@ import Data.Either.Extra
 
 -- TODO maybe symboltable can be refactored, the indirection seems useless...
 
+-- helpers for getting the type of a expression
+getTypeForLhs :: SymbolTable -> Expression -> Either AnalysisError Type
+getTypeForLhs st expr@(Identifier name sourcePos) = do
+    (Symbol _ sType _ _) <- maybeToEither (TypeError sourcePos "No symbol for identifier found.") (symbolForExpression expr st)
+    return sType
+getTypeForLhs st expr@(ArrayAccess varName exprs sourcePos) = do
+    aType <- getTypeForLhs st varName
+    case aType of
+        ArrayType baseType lengths -> return $ PrimType baseType
+        _ -> Left $ TypeError sourcePos "Array variable doesn't have array type!"
+getTypeForLhs st (BinaryExpression _ _ _ sourcePos) = Left $ TypeError sourcePos "lhs can't be a binaryexpression!" 
+getTypeForLhs st (Constant _ sourcePos) = Left $ TypeError sourcePos "lhs can't be a constant!" 
+getTypeForLhs st (FunctionCall _ _ sourcePos) = Left $ TypeError sourcePos "lhs can't be a functioncall!" 
+getTypeForLhs st (TypeCast _ _ sourcePos) = Left $ TypeError sourcePos "lhs can't be a typecast!" 
+
+getTypeForRhs :: SymbolTable -> Expression -> Either AnalysisError Type
+getTypeForRhs st expr@(ArrayAccess var exprs sourcePos) = do
+    aType <- getTypeForRhs st var
+    case aType of
+        ArrayType baseType lengths -> return $ PrimType baseType
+        _ -> Left $ TypeError sourcePos "Array variable doesn't have array type!"
+getTypeForRhs st expr@(BinaryExpression e1 _ _ sourcePos) = getTypeForRhs st e1
+getTypeForRhs st expr@(Constant (IntLit _) sourcePos) = return $ PrimType INT
+getTypeForRhs st expr@(Constant (RealLit _) sourcePos) = return $ PrimType REAL
+getTypeForRhs st expr@(FunctionCall funName _ sourcePos) = getTypeForRhs st funName
+getTypeForRhs st expr@(Identifier name sourcePos) = do
+    (Symbol _ sType _ _) <- maybeToEither (TypeError sourcePos "No symbol for identifier found") (symbolForExpression expr st)
+    return sType
+getTypeForRhs st expr@(TypeCast e1 (PrimitiveTypeName INT) sourcePos) = return $ PrimType INT
+getTypeForRhs st expr@(TypeCast e1 (PrimitiveTypeName REAL) sourcePos) = return $ PrimType REAL
+getTypeForRhs st expr@(TypeCast e1 castType sourcePos) = Left $ TypeError sourcePos "Found cast without primitive type, this shouldn't be possible!"
 
 -- Does type analysis on an AST using the SymbolTable that was constructed during NameAnalysis
 -- The type analysis returns a new SymbolTable containing Type information and a new AST containing casts where necessary
@@ -36,7 +67,7 @@ visitProgram (st, Program decls) = do
 
 
 visitDeclaration :: (SymbolTable, Declaration) -> Either AnalysisError (SymbolTable, Declaration)
-visitDeclaration (st, decl@(FunctionDeclaration ident@(Identifier name) params retType block sourcePos)) = do
+visitDeclaration (st, decl@(FunctionDeclaration ident@(Identifier name iSourcePos) params retType block sourcePos)) = do
     -- check return type
     return_type <- get_return_type
     -- visit parameters
@@ -55,8 +86,9 @@ visitDeclaration (st, decl@(FunctionDeclaration ident@(Identifier name) params r
     let new_symbol = Symbol old_ident funtype new_decl old_scope
     -- add new symbol to symboltable
     let st3 = insertDeclarationSymbol new_decl new_symbol st2
+    let st4 = updateDeclarationSymbol decl new_symbol st3 -- TODO somehow in here we need to also change the old symbol, probably by using updateDeclarationSymbol and give it the new symbol
     -- TODO remove old symbol...
-    return (st3, new_decl)
+    return (st4, new_decl)
     where
         extract_type :: Declaration -> Type
         extract_type decl = dType
@@ -71,7 +103,7 @@ visitDeclaration (st, decl@(FunctionDeclaration ident@(Identifier name) params r
             Nothing -> Right VoidType
             Just (PrimitiveTypeName pType) -> Right $ PrimType pType
             Just (ArrayTypeName {}) -> Left $ TypeError sourcePos "Function return type must be primitive!"
-visitDeclaration (st, decl@(ParameterDeclaration ident@(Identifier name) paramType sourcePos)) = do
+visitDeclaration (st, decl@(ParameterDeclaration ident@(Identifier name iSourcePos) paramType sourcePos)) = do
     -- get type
     param_type <- get_param_type paramType
     -- get old symbol
@@ -79,7 +111,7 @@ visitDeclaration (st, decl@(ParameterDeclaration ident@(Identifier name) paramTy
     -- construct new symbol
     let new_symbol = Symbol old_ident param_type decl old_scope
     -- update symboltable
-    let st1 = insertDeclarationSymbol decl new_symbol st
+    let st1 = updateDeclarationSymbol decl new_symbol st
     return (st1, decl)
     where
         get_param_type :: TypeName -> Either AnalysisError Type
@@ -87,7 +119,7 @@ visitDeclaration (st, decl@(ParameterDeclaration ident@(Identifier name) paramTy
             case paramType of
                 PrimitiveTypeName primType -> Right $ PrimType primType
                 _ -> Left $ TypeError sourcePos "Function parameters must have primitive type!"
-visitDeclaration (st, decl@(VariableDeclaration ident@(Identifier name) varType sourcePos)) = do
+visitDeclaration (st, decl@(VariableDeclaration ident@(Identifier name iSourcePos) varType sourcePos)) = do
     -- get type
     (st1, var_type) <- get_var_type st varType
     -- get old symbol
@@ -95,7 +127,7 @@ visitDeclaration (st, decl@(VariableDeclaration ident@(Identifier name) varType 
     -- construct new symbol
     let new_symbol = Symbol old_ident var_type decl old_scope
     -- update symboltable
-    let st2 = insertDeclarationSymbol decl new_symbol st1
+    let st2 = updateDeclarationSymbol decl new_symbol st1
     return (st2, decl)
     where
         get_var_type :: SymbolTable -> TypeName -> Either AnalysisError (SymbolTable, Type)
@@ -139,17 +171,12 @@ visitStatement (st, stmnt@(AssignStatement lhs rhs sourcePos)) = do
     (st1, new_lhs) <- visitExpression (st, lhs)
     -- visit rhs
     (st2, new_rhs) <- visitExpression (st1, rhs)
-    -- compare if their types match
-    -- for that get their symbols
-    lhs_symbol <- maybeToEither (TypeError sourcePos "Symbol for expression not found, how could this happen?!") (symbolForExpression new_lhs st2)
-    rhs_symbol <- maybeToEither (TypeError sourcePos "Symbol for expression not found, how could this happen?!") (symbolForExpression new_rhs st2)
-    -- get their types
-    let lhs_type = symbolType lhs_symbol
-    let rhs_type = symbolType rhs_symbol
+    lhs_type <- getTypeForLhs st2 new_lhs
+    rhs_type <- getTypeForRhs st2 new_rhs
 
     -- TODO add casts in some cases
     if lhs_type /= rhs_type 
-        then Left $ TypeError sourcePos "Types for assignment don't match!"
+        then Left $ TypeError sourcePos $ "Types for assignment don't match!\nLeft: " ++ show lhs_type ++ "\nRight: " ++ show rhs_type 
         else return (st2, AssignStatement new_lhs new_rhs sourcePos)
 visitStatement (st, stmnt@(FunctionCallStatement fun_call sourcePos)) = do
     -- visit funCall
@@ -174,6 +201,7 @@ visitStatement (st, stmnt@(WhileStatement cond block sourcePos)) = do
     (st2, new_block) <- visitBlock (st1, block)
     return (st2, WhileStatement new_cond new_block sourcePos)
 visitStatement (st, stmnt@(ReturnStatement m_expr sourcePos)) = do
+    -- TODO check that returnType matches, needs some state to be passed in the visitor
     -- visit expression
     (st1, new_expr) <- case m_expr of
         Nothing -> return (st, Nothing)
@@ -219,7 +247,7 @@ visitExpression (st, expr@(FunctionCall fun args sourcePos)) = do
         argFun (st, exprs) expr = do
             (st1, new_expr) <- visitExpression (st, expr)
             return (st1, new_expr : exprs)
-visitExpression (st, expr@(Identifier name)) = return (st, expr)
+visitExpression (st, expr@(Identifier name iSourcePos)) = return (st, expr)
 visitExpression (st, expr@(TypeCast e1 tName sourcePos)) = do
     (st1, new_e1) <- visitExpression (st, e1)
     return (st1, TypeCast new_e1 tName sourcePos)

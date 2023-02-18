@@ -31,7 +31,7 @@ preludePos :: SourcePos
 preludePos = newPos "Prelude" 0 0
 
 dummyDeclaration :: Declaration
-dummyDeclaration = FunctionDeclaration (Identifier "PreludeFunction") [] Nothing (Block [] []) preludePos
+dummyDeclaration = FunctionDeclaration (Identifier "PreludeFunction" preludePos) [] Nothing (Block [] []) preludePos
 
 -- TODO add type information, when implementing typeanalysis
 preludeSymbols :: [Symbol]

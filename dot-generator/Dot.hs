@@ -136,7 +136,7 @@ visitExpression state file (FunctionCall ident args sourcePos) = do
     newState <- visitExpression newState file ident
     newState <- foldM (`visitExpression` file) newState args
     createArrow file newState
-visitExpression state file (Identifier name) = do
+visitExpression state file (Identifier name sourcePos) = do
     newState <- printNode file name state
     createArrow file newState
 visitExpression state file (TypeCast expression newType sourcePos) = do
