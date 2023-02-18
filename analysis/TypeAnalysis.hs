@@ -8,8 +8,13 @@ import Data.Foldable (Foldable(foldr'))
 import Data.Maybe (fromMaybe)
 import Control.Monad (foldM, when)
 import Data.Either.Extra
+import Debug.Trace
 
--- TODO maybe symboltable can be refactored, the indirection seems useless...
+-- TODO insert typecasts where necessary
+-- TODO check that typechecks are implemented
+    -- e.g. main function needs to return int
+    -- return statements must return same type as the function does
+-- TODO import error messages
 
 -- helpers for getting the type of a expression
 getTypeForLhs :: SymbolTable -> Expression -> Either AnalysisError Type
@@ -54,16 +59,15 @@ doTypeAnalysis st prog = do
     (st, new_prog) <- visitProgram (st, prog)
     return (st, new_prog)
 
-
 visitProgram :: (SymbolTable, Program) -> Either AnalysisError (SymbolTable, Program)
 visitProgram (st, Program decls) = do
     -- visit declarations first
     (st1, prog1) <- foldM f (st, Program []) (reverse globalVariables)
-    -- TODO visit functions shallow before visiting 'for real'
+    -- collect function symbols before visiting their respective blocks
     st2 <- foldM shallowVisit st1 functionDeclarations
     -- then visit functions
-    (st2, prog2) <- foldM f (st1, prog1) (reverse functionDeclarations)
-    return (st2, prog2)
+    (st3, prog2) <- foldM f (st2, prog1) (reverse functionDeclarations)
+    return (st3, prog2)
     where
         globalVariables = [var | var@(VariableDeclaration {}) <- decls]
         functionDeclarations = [fun | fun@(FunctionDeclaration {}) <- decls]
@@ -76,9 +80,9 @@ visitProgram (st, Program decls) = do
             -- check return type
             return_type <- get_return_type
             -- visit parameters
-            (st1, new_params) <- foldM paramFoldFun (st, []) (reverse params)
+            st1 <- foldM paramFoldFun st (reverse params)
             -- get parameterTypes
-            let param_types = map extract_type params
+            let param_types = map (extract_type st1) params
             -- construct functionType
             let funtype = FunctionType return_type param_types
             -- get old symbol
@@ -86,16 +90,17 @@ visitProgram (st, Program decls) = do
             -- construct new symbol
             let new_symbol = Symbol old_ident funtype decl old_scope
             -- update symboltable symboltable
-            return $ updateDeclarationSymbol decl new_symbol st1
+            let new_st = updateDeclarationSymbol decl new_symbol st1
+            return new_st
             where
-                extract_type :: Declaration -> Type
-                extract_type decl = dType
+                extract_type :: SymbolTable -> Declaration -> Type
+                extract_type st decl = dType
                     where
                         (Just (Symbol _ dType _ _)) = symbolForDeclaration decl st
-                paramFoldFun :: (SymbolTable, [Declaration]) -> Declaration -> Either AnalysisError (SymbolTable, [Declaration])
-                paramFoldFun (st, decls) decl = do
-                    (st1, new_decl) <- visitDeclaration (st, decl)
-                    return (st1, new_decl : decls)
+                paramFoldFun :: SymbolTable -> Declaration -> Either AnalysisError SymbolTable
+                paramFoldFun st decl = do
+                    (st1, _) <- visitDeclaration (st, decl)
+                    return st1
                 get_return_type :: Either AnalysisError Type
                 get_return_type = case mRetType of
                     Nothing -> Right VoidType
@@ -121,7 +126,7 @@ visitDeclaration (st, decl@(ParameterDeclaration ident@(Identifier name iSourceP
     -- get type
     param_type <- get_param_type paramType
     -- get old symbol
-    (Symbol old_ident old_type old_decl old_scope ) <- maybeToEither (TypeError sourcePos "Symbol for function not found, how could this happen?!") (symbolForDeclaration decl st)
+    (Symbol old_ident old_type old_decl old_scope ) <- maybeToEither (TypeError sourcePos "Symbol for parameter not found, how could this happen?!") (symbolForDeclaration decl st)
     -- construct new symbol
     let new_symbol = Symbol old_ident param_type decl old_scope
     -- update symboltable
@@ -251,7 +256,6 @@ visitExpression (st, expr@(BinaryExpression e1 op e2 sourcePos)) = do
     return (st2, BinaryExpression left op right sourcePos)
 visitExpression (st, expr@(Constant lit sourcePos)) = return (st, expr)
 visitExpression (st, expr@(FunctionCall fun args sourcePos)) = do
-    -- TODO check that types match
     -- visit identifier
     (st1, new_fun) <- visitExpression (st, fun)
     -- visit args
@@ -261,14 +265,14 @@ visitExpression (st, expr@(FunctionCall fun args sourcePos)) = do
     argTypes <- mapM (getTypeForRhs st2) new_args
     case funType of
         FunctionType retType expectedArgTypes -> checkArgTypes expectedArgTypes argTypes
-        _ -> Left $ TypeError sourcePos $ "functioncall on non-function variable, type is: " ++ show funType ++ "\nCurrent symbolTable is:\n" ++ showSymbolTable st2
+        _ -> Left $ TypeError sourcePos $ "functioncall on non-function variable, type is: " ++ show funType
     return (st2, FunctionCall new_fun new_args sourcePos)
     where
         checkArgTypes :: [Type] -> [Type] -> Either AnalysisError ()
         checkArgTypes expected actual = do 
             when (length expected /= length actual) $ Left $ TypeError sourcePos "Number of arguments for functionCall doesn't match!"
             let zipped = zip expected actual
-            foldM (\x (a,b) -> (if a == b then return x else Left $ TypeError sourcePos "Argument types do not match!")) () zipped
+            foldM (\x (a,b) -> (if a == b then return x else Left $ TypeError sourcePos ("Argument types do not match!\nFound: " ++ show b ++ "\nExpected: " ++ show a))) () zipped
         argFun :: (SymbolTable, [Expression]) -> Expression -> Either AnalysisError (SymbolTable, [Expression])
         argFun (st, exprs) expr = do
             (st1, new_expr) <- visitExpression (st, expr)

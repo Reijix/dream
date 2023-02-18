@@ -9,7 +9,7 @@ func main () {
     end;
 } end
 
-func f () : int {
+func f (a : int) : int {
     return 5;
 } end
 

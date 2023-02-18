@@ -70,7 +70,6 @@ run (CmdOption sourceFile destinationFile dotFile) = do
             Left (NameError sourcePos err) -> error $ "NameError at " ++ show sourcePos ++ "\n" ++ err
             Right st -> st
       -- do typeAnalysis
-      putStrLn $ "Symboltable after nameAnalysis is:\n" ++ showSymbolTable symbTable
       let !mResult = doTypeAnalysis symbTable program
       let !(st, taProg) = case mResult of
             Left (TypeError sourcePos err) -> error $ "TypeError at " ++ show sourcePos ++ "\n" ++ err
