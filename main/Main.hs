@@ -11,6 +11,7 @@ import Data.List (genericTake)
 import System.IO ( hGetContents, openFile, IOMode(ReadMode) )
 import TypeAnalysis (doTypeAnalysis)
 import AnalysisError (AnalysisError(TypeError))
+import SymbolTable (printSymbolTable, showSymbolTable)
 
 data CmdOption = CmdOption
   {
@@ -59,13 +60,14 @@ run (CmdOption sourceFile destinationFile dotFile) = do
   let ast = parseProgram sourceFile sourceText
   case ast of
     Left err -> print err
-    Right program -> do
+    Right !program -> do
       -- do constantFolding
       let !cfProg = foldConstants program
       generateDotFile dotFile cfProg
       -- do nameAnalysis
       let !symbTable = doNameAnalysis program
       -- do typeAnalysis
+      putStrLn $ "Symboltable after nameAnalysis is:\n" ++ showSymbolTable symbTable
       let !mResult = doTypeAnalysis symbTable program
       let !(st, taProg) = case mResult of
             Left (TypeError sourcePos err) -> error $ "TypeError at " ++ show sourcePos ++ "\n" ++ err

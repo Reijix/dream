@@ -6,7 +6,7 @@ import Syntax
 import Symbol
 import Data.Foldable (Foldable(foldr'))
 import Data.Maybe (fromMaybe)
-import Control.Monad (foldM)
+import Control.Monad (foldM, when)
 import Data.Either.Extra
 
 -- TODO maybe symboltable can be refactored, the indirection seems useless...
@@ -35,7 +35,11 @@ getTypeForRhs st expr@(ArrayAccess var exprs sourcePos) = do
 getTypeForRhs st expr@(BinaryExpression e1 _ _ sourcePos) = getTypeForRhs st e1
 getTypeForRhs st expr@(Constant (IntLit _) sourcePos) = return $ PrimType INT
 getTypeForRhs st expr@(Constant (RealLit _) sourcePos) = return $ PrimType REAL
-getTypeForRhs st expr@(FunctionCall funName _ sourcePos) = getTypeForRhs st funName
+getTypeForRhs st expr@(FunctionCall funName _ sourcePos) = do
+    funType <- getTypeForRhs st funName
+    case funType of
+        FunctionType retType argTypes -> return retType
+        _ -> Left $ TypeError sourcePos "FunctionCall on non-function variable!"
 getTypeForRhs st expr@(Identifier name sourcePos) = do
     (Symbol _ sType _ _) <- maybeToEither (TypeError sourcePos "No symbol for identifier found") (symbolForExpression expr st)
     return sType
@@ -55,6 +59,9 @@ visitProgram :: (SymbolTable, Program) -> Either AnalysisError (SymbolTable, Pro
 visitProgram (st, Program decls) = do
     -- visit declarations first
     (st1, prog1) <- foldM f (st, Program []) (reverse globalVariables)
+    -- TODO visit functions shallow before visiting 'for real'
+    st2 <- foldM shallowVisit st1 functionDeclarations
+    -- then visit functions
     (st2, prog2) <- foldM f (st1, prog1) (reverse functionDeclarations)
     return (st2, prog2)
     where
@@ -64,45 +71,52 @@ visitProgram (st, Program decls) = do
         f (st, Program decls) decl = do
             (st1, new_decl) <- visitDeclaration (st, decl)
             return (st1, Program (new_decl : decls))
-
+        shallowVisit :: SymbolTable -> Declaration -> Either AnalysisError SymbolTable
+        shallowVisit st decl@(FunctionDeclaration funName params mRetType block sourcePos) = do
+            -- check return type
+            return_type <- get_return_type
+            -- visit parameters
+            (st1, new_params) <- foldM paramFoldFun (st, []) (reverse params)
+            -- get parameterTypes
+            let param_types = map extract_type params
+            -- construct functionType
+            let funtype = FunctionType return_type param_types
+            -- get old symbol
+            (Symbol old_ident old_type old_decl old_scope ) <- maybeToEither (TypeError sourcePos "Symbol for function not found, how could this happen?!") (symbolForDeclaration decl st)
+            -- construct new symbol
+            let new_symbol = Symbol old_ident funtype decl old_scope
+            -- update symboltable symboltable
+            return $ updateDeclarationSymbol decl new_symbol st1
+            where
+                extract_type :: Declaration -> Type
+                extract_type decl = dType
+                    where
+                        (Just (Symbol _ dType _ _)) = symbolForDeclaration decl st
+                paramFoldFun :: (SymbolTable, [Declaration]) -> Declaration -> Either AnalysisError (SymbolTable, [Declaration])
+                paramFoldFun (st, decls) decl = do
+                    (st1, new_decl) <- visitDeclaration (st, decl)
+                    return (st1, new_decl : decls)
+                get_return_type :: Either AnalysisError Type
+                get_return_type = case mRetType of
+                    Nothing -> Right VoidType
+                    Just (PrimitiveTypeName pType) -> Right $ PrimType pType
+                    Just (ArrayTypeName {}) -> Left $ TypeError sourcePos "Function return type must be primitive!"
 
 visitDeclaration :: (SymbolTable, Declaration) -> Either AnalysisError (SymbolTable, Declaration)
 visitDeclaration (st, decl@(FunctionDeclaration ident@(Identifier name iSourcePos) params retType block sourcePos)) = do
-    -- check return type
-    return_type <- get_return_type
-    -- visit parameters
-    (st1, new_params) <- foldM paramFoldFun (st, []) (reverse params)
-    -- get parameterTypes
-    let param_types = map extract_type params
-    -- construct functionType
-    let funtype = FunctionType return_type param_types
     -- visit block
-    (st2, new_block) <- visitBlock (st1, block)
+    (st1, new_block) <- visitBlock (st, block)
     -- construct new declaration node
-    let new_decl = FunctionDeclaration ident new_params retType new_block sourcePos
+    let new_decl = FunctionDeclaration ident params retType new_block sourcePos
     -- get old symbol
     (Symbol old_ident old_type old_decl old_scope ) <- maybeToEither (TypeError sourcePos "Symbol for function not found, how could this happen?!") (symbolForDeclaration decl st)
     -- construct new symbol
-    let new_symbol = Symbol old_ident funtype new_decl old_scope
+    let new_symbol = Symbol old_ident old_type new_decl old_scope
     -- add new symbol to symboltable
-    let st3 = insertDeclarationSymbol new_decl new_symbol st2
-    let st4 = updateDeclarationSymbol decl new_symbol st3 -- TODO somehow in here we need to also change the old symbol, probably by using updateDeclarationSymbol and give it the new symbol
+    let st2 = insertDeclarationSymbol new_decl new_symbol st1
     -- TODO remove old symbol...
-    return (st4, new_decl)
-    where
-        extract_type :: Declaration -> Type
-        extract_type decl = dType
-            where
-                (Just (Symbol _ dType _ _)) = symbolForDeclaration decl st
-        paramFoldFun :: (SymbolTable, [Declaration]) -> Declaration -> Either AnalysisError (SymbolTable, [Declaration])
-        paramFoldFun (st, decls) decl = do
-            (st1, new_decl) <- visitDeclaration (st, decl)
-            return (st1, new_decl : decls)
-        get_return_type :: Either AnalysisError Type
-        get_return_type = case retType of
-            Nothing -> Right VoidType
-            Just (PrimitiveTypeName pType) -> Right $ PrimType pType
-            Just (ArrayTypeName {}) -> Left $ TypeError sourcePos "Function return type must be primitive!"
+    return (st2, new_decl)
+
 visitDeclaration (st, decl@(ParameterDeclaration ident@(Identifier name iSourcePos) paramType sourcePos)) = do
     -- get type
     param_type <- get_param_type paramType
@@ -237,12 +251,24 @@ visitExpression (st, expr@(BinaryExpression e1 op e2 sourcePos)) = do
     return (st2, BinaryExpression left op right sourcePos)
 visitExpression (st, expr@(Constant lit sourcePos)) = return (st, expr)
 visitExpression (st, expr@(FunctionCall fun args sourcePos)) = do
+    -- TODO check that types match
     -- visit identifier
     (st1, new_fun) <- visitExpression (st, fun)
     -- visit args
     (st2, new_args) <- foldM argFun (st1, []) (reverse args)
+    -- make sure that types match
+    funType <- getTypeForRhs st2 new_fun
+    argTypes <- mapM (getTypeForRhs st2) new_args
+    case funType of
+        FunctionType retType expectedArgTypes -> checkArgTypes expectedArgTypes argTypes
+        _ -> Left $ TypeError sourcePos $ "functioncall on non-function variable, type is: " ++ show funType ++ "\nCurrent symbolTable is:\n" ++ showSymbolTable st2
     return (st2, FunctionCall new_fun new_args sourcePos)
     where
+        checkArgTypes :: [Type] -> [Type] -> Either AnalysisError ()
+        checkArgTypes expected actual = do 
+            when (length expected /= length actual) $ Left $ TypeError sourcePos "Number of arguments for functionCall doesn't match!"
+            let zipped = zip expected actual
+            foldM (\x (a,b) -> (if a == b then return x else Left $ TypeError sourcePos "Argument types do not match!")) () zipped
         argFun :: (SymbolTable, [Expression]) -> Expression -> Either AnalysisError (SymbolTable, [Expression])
         argFun (st, exprs) expr = do
             (st1, new_expr) <- visitExpression (st, expr)

@@ -1,4 +1,4 @@
-module SymbolTable ( SymbolTable, symbolForDeclaration, symbolForExpression, insertDeclarationSymbol, insertExpressionSymbol, emptySymbolTable, constructSymbolTable, printSymbolTable, updateDeclarationSymbol ) where
+module SymbolTable ( SymbolTable, symbolForDeclaration, symbolForExpression, insertDeclarationSymbol, insertExpressionSymbol, emptySymbolTable, constructSymbolTable, printSymbolTable, updateDeclarationSymbol, showSymbolTable ) where
 
 import Data.Map ( Map, (!), empty, lookup, insert, keys )
 import Prelude hiding ( lookup )
@@ -13,6 +13,15 @@ data SymbolNode
 -- map with indirection, so that multiple nodes can point to the same symbol and we can change the symbol for all nodes at once
 type SymbolTable = (Map SymbolNode Int, Map Int Symbol, Int) -- idxs, symbols, nextIdx
 
+showSymbolTable :: SymbolTable -> String
+showSymbolTable (idxs, symbols, _) = foldl line "" idxList
+    where
+        idxList = keys idxs
+        line :: String -> SymbolNode -> String
+        line string node = "at index " ++ show idx ++ " is symbol " ++ show symbol ++ "\n"
+            where
+                (Just idx) = lookup node idxs
+                (Just symbol) = lookup idx symbols
 printSymbolTable :: SymbolTable -> IO ()
 printSymbolTable (idxs, symbols, _) = do
     let idxList = keys idxs
