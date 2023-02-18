@@ -10,7 +10,7 @@ import NameAnalysis (doNameAnalysis)
 import Data.List (genericTake)
 import System.IO ( hGetContents, openFile, IOMode(ReadMode) )
 import TypeAnalysis (doTypeAnalysis)
-import AnalysisError (AnalysisError(TypeError))
+import AnalysisError (AnalysisError(TypeError, NameError))
 import SymbolTable (printSymbolTable, showSymbolTable)
 
 data CmdOption = CmdOption
@@ -65,7 +65,10 @@ run (CmdOption sourceFile destinationFile dotFile) = do
       let !cfProg = foldConstants program
       generateDotFile dotFile cfProg
       -- do nameAnalysis
-      let !symbTable = doNameAnalysis program
+      let !naResult = doNameAnalysis program
+      let !symbTable = case naResult of
+            Left (NameError sourcePos err) -> error $ "NameError at " ++ show sourcePos ++ "\n" ++ err
+            Right st -> st
       -- do typeAnalysis
       putStrLn $ "Symboltable after nameAnalysis is:\n" ++ showSymbolTable symbTable
       let !mResult = doTypeAnalysis symbTable program
