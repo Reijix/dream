@@ -1,6 +1,6 @@
 module Symbol where
 
-import Syntax ( Declaration (FunctionDeclaration), Expression (Identifier), Block (Block), TypeName (ArrayTypeName), PrimitiveType )
+import Syntax ( Declaration (FunctionDeclaration), Expression (Identifier), Block (Block), TypeName (ArrayTypeName), PrimitiveType (REAL, INT) )
 import Text.Parsec.Pos ( SourcePos, newPos )
 
 data Type 
@@ -33,14 +33,18 @@ preludePos = newPos "Prelude" 0 0
 dummyDeclaration :: Declaration
 dummyDeclaration = FunctionDeclaration (Identifier "PreludeFunction" preludePos) [] Nothing (Block [] []) preludePos
 
--- TODO add type information, when implementing typeanalysis
+int :: Type
+int = PrimType INT
+real :: Type
+real = PrimType REAL
+
 preludeSymbols :: [Symbol]
 preludeSymbols = [
-    Symbol "writeChar" VoidType dummyDeclaration FUNCTION_SCOPE,
-    Symbol "readChar" VoidType dummyDeclaration FUNCTION_SCOPE,
-    Symbol "writeInt" VoidType dummyDeclaration FUNCTION_SCOPE,
-    Symbol "readInt" VoidType dummyDeclaration FUNCTION_SCOPE,
-    Symbol "writeReal" VoidType dummyDeclaration FUNCTION_SCOPE,
-    Symbol "readReal" VoidType dummyDeclaration FUNCTION_SCOPE,
-    Symbol "exit" VoidType dummyDeclaration FUNCTION_SCOPE
+    Symbol "writeChar" (FunctionType int [int]) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "readChar" (FunctionType int []) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "writeInt" (FunctionType int [int]) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "readInt" (FunctionType int []) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "writeReal" (FunctionType int [real]) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "readReal" (FunctionType real []) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "exit" (FunctionType int [int]) dummyDeclaration FUNCTION_SCOPE
     ]

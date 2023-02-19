@@ -17,10 +17,11 @@ type NAState = ([DefinitionTable], SymbolTable)
 -- runner method for nameanalysis, only this needs to be exported
 doNameAnalysis :: Program -> Either AnalysisError SymbolTable
 doNameAnalysis prog = do
-    (_, st) <- visitProgram ([preludeDefinitions], emptySymbolTable) prog
+    (_, st) <- visitProgram ([preludeDefinitions], preludeSt) prog
     return st
     where
         preludeDefinitions = foldl' insertSymb empty preludeSymbols
+        preludeSt = foldl' (\st symb@(Symbol name _ decl _) -> insertDeclarationSymbol decl symb st) emptySymbolTable preludeSymbols
         insertSymb :: DefinitionTable -> Symbol -> DefinitionTable
         insertSymb dt symb@(Symbol name _ _ _) = insert name symb dt
 

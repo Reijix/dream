@@ -1,4 +1,4 @@
-module SymbolTable ( SymbolTable, symbolForDeclaration, symbolForExpression, insertDeclarationSymbol, insertExpressionSymbol, emptySymbolTable, constructSymbolTable, printSymbolTable, updateDeclarationSymbol, showSymbolTable ) where
+module SymbolTable ( SymbolTable, symbolForDeclaration, symbolForExpression, insertDeclarationSymbol, insertExpressionSymbol, emptySymbolTable, printSymbolTable, updateDeclarationSymbol, showSymbolTable ) where
 
 import Data.Map ( Map, (!), empty, lookup, insert, keys )
 import Prelude hiding ( lookup )
@@ -76,9 +76,3 @@ updateDeclarationSymbol = updateSymbol . SDeclaration
 
 emptySymbolTable :: SymbolTable
 emptySymbolTable = (empty, empty, 0)
-
--- TODO add functions for modifying a symbol at a position indirectly!! i.e. setting the symbols type to something etc.
-
--- TODO add prelude definitions here
-constructSymbolTable :: SymbolTable
-constructSymbolTable = (empty, empty, 0)
