@@ -6,15 +6,14 @@ import Syntax
 import Symbol
 import Data.Foldable (Foldable(foldr'))
 import Data.Maybe (fromMaybe)
-import Control.Monad (foldM, when)
+import Control.Monad (foldM, when, unless)
 import Data.Either.Extra
 import Debug.Trace
 
 -- TODO insert typecasts where necessary
 -- TODO check that typechecks are implemented
-    -- e.g. main function needs to return int
     -- return statements must return same type as the function does
--- TODO import error messages
+-- TODO improve error messages
 
 -- helpers for getting the type of a expression
 getTypeForLhs :: SymbolTable -> Expression -> Either AnalysisError Type
@@ -76,13 +75,15 @@ visitProgram (st, Program decls) = do
             (st1, new_decl) <- visitDeclaration (st, decl)
             return (st1, Program (new_decl : decls))
         shallowVisit :: SymbolTable -> Declaration -> Either AnalysisError SymbolTable
-        shallowVisit st decl@(FunctionDeclaration funName params mRetType block sourcePos) = do
+        shallowVisit st decl@(FunctionDeclaration funName@(Identifier name iSourcePos) params mRetType block sourcePos) = do
             -- check return type
             return_type <- get_return_type
             -- visit parameters
             st1 <- foldM paramFoldFun st (reverse params)
             -- get parameterTypes
             let param_types = map (extract_type st1) params
+            -- check if type is correct if main function
+            when (name == "main") (checkMainFun return_type param_types)
             -- construct functionType
             let funtype = FunctionType return_type param_types
             -- get old symbol
@@ -93,6 +94,12 @@ visitProgram (st, Program decls) = do
             let new_st = updateDeclarationSymbol decl new_symbol st1
             return new_st
             where
+                checkMainFun :: Type -> [Type] -> Either AnalysisError ()
+                checkMainFun retType paramTypes = do
+                    case retType of
+                        PrimType INT -> return ()
+                        _ -> Left $ TypeError sourcePos "main function should return int!"
+                    unless (null paramTypes) $ Left $ TypeError sourcePos "main function shouldn't have parameters!"
                 extract_type :: SymbolTable -> Declaration -> Type
                 extract_type st decl = dType
                     where
