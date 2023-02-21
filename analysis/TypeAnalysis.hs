@@ -10,9 +10,6 @@ import Control.Monad (foldM, when, unless)
 import Data.Either.Extra
 import Debug.Trace
 
--- TODO insert typecasts where necessary
--- TODO check that typechecks are implemented
-    -- return statements must return same type as the function does
 -- TODO improve error messages
 
 -- helpers for getting the type of a expression
@@ -198,16 +195,19 @@ visitBlock (st, Block decls stmnts, currFun)= do
 visitStatement :: (SymbolTable, Statement, Declaration) -> Either AnalysisError (SymbolTable, Statement)
 visitStatement (st, stmnt@(AssignStatement lhs rhs sourcePos), curFun) = do
     -- visit lhs
-    (st1, new_lhs) <- visitExpression (st, lhs)
+    (st1, lhs') <- visitExpression (st, lhs)
     -- visit rhs
-    (st2, new_rhs) <- visitExpression (st1, rhs)
-    lhs_type <- getTypeForLhs st2 new_lhs
-    rhs_type <- getTypeForRhs st2 new_rhs
-
-    -- TODO add casts in some cases
-    if lhs_type /= rhs_type 
-        then Left $ TypeError sourcePos $ "Types for assignment don't match!\nLeft: " ++ show lhs_type ++ "\nRight: " ++ show rhs_type 
-        else return (st2, AssignStatement new_lhs new_rhs sourcePos)
+    (st2, rhs') <- visitExpression (st1, rhs)
+    lhs_type <- getTypeForLhs st2 lhs'
+    rhs_type <- getTypeForRhs st2 rhs'
+    -- check types and insert casts if necessary
+    (lhs'', rhs'') <- case (lhs_type, rhs_type) of
+        (PrimType INT, PrimType INT) -> return (lhs', rhs')
+        (PrimType INT, PrimType REAL) -> return (TypeCast lhs' (PrimitiveTypeName REAL) sourcePos, rhs')
+        (PrimType REAL, PrimType INT) -> return (lhs', TypeCast rhs' (PrimitiveTypeName REAL) sourcePos)
+        (PrimType REAL, PrimType REAL) -> return (lhs', rhs')
+        _ -> Left $ TypeError sourcePos $ "Types for assignment don't match and can't be (implicitly) casted!\nLeft: " ++ show lhs_type ++ "\nRight: " ++ show rhs_type 
+    return (st2, AssignStatement lhs'' rhs'' sourcePos)
 visitStatement (st, stmnt@(FunctionCallStatement fun_call sourcePos), curFun) = do
     -- visit funCall
     (st1, new_fun_call) <- visitExpression (st, fun_call)
@@ -236,19 +236,23 @@ visitStatement (st, stmnt@(ReturnStatement m_expr sourcePos), curFun) = do
         Nothing -> Left $ TypeError sourcePos "return statement not inside function?? Your parser is fucked!"
         Just (Symbol funName (FunctionType retType _) _ _) -> return (funName, retType)
     -- check expression
-    (st1, new_expr) <- case m_expr of
+    (st1, expr') <- case m_expr of
         Nothing -> case returnType of
             VoidType -> return (st, Nothing)
             _ -> Left $ TypeError sourcePos $ "function " ++ funName ++ ", expected return value but didn't get one!"
         Just expr -> do
             -- visit expression
-            (st, new_expr) <- visitExpression (st, expr)
+            (st, expr') <- visitExpression (st, expr)
             -- get type of expression
-            exprType <- getTypeForRhs st new_expr
-            -- check that types match
-            unless (returnType == exprType) (Left $ TypeError sourcePos $ "type of return statement doesn't match the expected type!\nExpected: " ++ show returnType ++ "\nActual: " ++ show exprType)
-            return (st, Just new_expr)
-    return (st1, ReturnStatement new_expr sourcePos)
+            exprType <- getTypeForRhs st expr'
+            -- check that types match and insert typecast
+            expr'' <- case (returnType, exprType) of
+                (PrimType INT, PrimType INT) -> return expr'
+                (PrimType REAL, PrimType INT) -> return $ TypeCast expr' (PrimitiveTypeName REAL) sourcePos
+                (PrimType REAL, PrimType REAL) -> return expr'
+                _ -> Left $ TypeError sourcePos $ "type of return statement doesn't match the expected type!\nExpected: " ++ show returnType ++ "\nActual: " ++ show exprType
+            return (st, Just expr'')
+    return (st1, ReturnStatement expr' sourcePos)
 
 visitExpression :: (SymbolTable, Expression) -> Either AnalysisError (SymbolTable, Expression)
 visitExpression (st, expr@(ArrayAccess var lengths sourcePos)) = do
@@ -274,7 +278,17 @@ visitExpression (st, expr@(BinaryExpression e1 op e2 sourcePos)) = do
     (st1, left) <- visitExpression (st, e1)
     -- visit right op
     (st2, right) <- visitExpression (st1, e2)
-    return (st2, BinaryExpression left op right sourcePos)
+    -- get types of both sides
+    leftType <- getTypeForRhs st2 left
+    rightType <- getTypeForRhs st2 right
+    -- insert TypeCasts where necessary
+    (e1', e2') <- case (leftType, rightType) of
+        (PrimType INT, PrimType INT) -> return (left, right)
+        (PrimType INT, PrimType REAL) -> return (TypeCast left (PrimitiveTypeName REAL) sourcePos, right)
+        (PrimType REAL, PrimType INT) -> return (left, TypeCast right (PrimitiveTypeName REAL) sourcePos)
+        (PrimType REAL, PrimType REAL) -> return (left, right)
+        _ -> Left $ TypeError sourcePos $ "Operand in binary expression has weird type??\nEither: " ++ show leftType ++ "\nOr: " ++ show rightType
+    return (st2, BinaryExpression e1' op e2' sourcePos)
 visitExpression (st, expr@(Constant lit sourcePos)) = return (st, expr)
 visitExpression (st, expr@(FunctionCall fun args sourcePos)) = do
     -- visit identifier
@@ -283,22 +297,46 @@ visitExpression (st, expr@(FunctionCall fun args sourcePos)) = do
     (st2, new_args) <- foldM argFun (st1, []) (reverse args)
     -- make sure that types match
     funType <- getTypeForRhs st2 new_fun
-    argTypes <- mapM (getTypeForRhs st2) new_args
-    case funType of
-        FunctionType retType expectedArgTypes -> checkArgTypes expectedArgTypes argTypes
+    casted_args <- case funType of
+        FunctionType retType expectedArgTypes -> checkArgTypes st2 expectedArgTypes new_args
         _ -> Left $ TypeError sourcePos $ "functioncall on non-function variable, type is: " ++ show funType
-    return (st2, FunctionCall new_fun new_args sourcePos)
+    return (st2, FunctionCall new_fun casted_args sourcePos)
     where
-        checkArgTypes :: [Type] -> [Type] -> Either AnalysisError ()
-        checkArgTypes expected actual = do 
-            when (length expected /= length actual) $ Left $ TypeError sourcePos "Number of arguments for functionCall doesn't match!"
-            let zipped = zip expected actual
-            foldM (\x (a,b) -> (if a == b then return x else Left $ TypeError sourcePos ("Argument types do not match!\nFound: " ++ show b ++ "\nExpected: " ++ show a))) () zipped
+        checkArgTypes :: SymbolTable -> [Type] -> [Expression] -> Either AnalysisError [Expression]
+        checkArgTypes st expectedTypes arguments = do 
+            when (length expectedTypes /= length arguments) $ Left $ TypeError sourcePos "Number of arguments for functionCall doesn't match!"
+            let zipped = zip expectedTypes arguments
+            foldM (\x (a,b) -> (
+                do
+                    expr' <- insertCastOrFail st a b
+                    return $ expr' : x
+                )) [] zipped
         argFun :: (SymbolTable, [Expression]) -> Expression -> Either AnalysisError (SymbolTable, [Expression])
         argFun (st, exprs) expr = do
             (st1, new_expr) <- visitExpression (st, expr)
             return (st1, new_expr : exprs)
+        insertCastOrFail :: SymbolTable -> Type -> Expression -> Either AnalysisError Expression
+        insertCastOrFail st expected expr = do
+            -- get expression type
+            actual <- getTypeForRhs st expr
+            -- do typechecks and insert casts
+            case (expected, actual) of
+                (PrimType INT, PrimType INT) -> return expr
+                (PrimType INT, PrimType REAL) -> Left $ TypeError sourcePos "can't implicitly cast real to int!"
+                (PrimType REAL, PrimType INT) -> return $ TypeCast expr (PrimitiveTypeName REAL) sourcePos
+                (PrimType REAL, PrimType REAL) -> return expr
+                _ -> Left $ TypeError sourcePos ("Argument types do not match!\nFound: " ++ show actual ++ "\nExpected: " ++ show expected)
 visitExpression (st, expr@(Identifier name iSourcePos)) = return (st, expr)
 visitExpression (st, expr@(TypeCast e1 tName sourcePos)) = do
+    -- visit expression
     (st1, new_e1) <- visitExpression (st, e1)
+    -- check that expression is either of type int or real
+    exprType <- getTypeForRhs st1 new_e1
+    case exprType of 
+        PrimType _ -> return ()
+        wrongType -> Left $ TypeError sourcePos $ "Expressions of type " ++ show wrongType ++ "cannot be casted!"
+    -- and that the target type is int or real
+    case tName of
+        ArrayTypeName {} -> Left $ TypeError sourcePos "Can't cast a expression to array type!"
+        _ -> return ()
     return (st1, TypeCast new_e1 tName sourcePos)
