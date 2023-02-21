@@ -117,7 +117,7 @@ visitProgram (st, Program decls) = do
 visitDeclaration :: (SymbolTable, Declaration) -> Either AnalysisError (SymbolTable, Declaration)
 visitDeclaration (st, decl@(FunctionDeclaration ident@(Identifier name iSourcePos) params retType block sourcePos)) = do
     -- visit block
-    (st1, new_block) <- visitBlock (st, block)
+    (st1, new_block) <- visitBlock (st, block, decl)
     -- construct new declaration node
     let new_decl = FunctionDeclaration ident params retType new_block sourcePos
     -- get old symbol
@@ -174,8 +174,10 @@ visitDeclaration (st, decl@(VariableDeclaration ident@(Identifier name iSourcePo
                         extractPrimitiveType (PrimitiveTypeName INT) = Right INT
                         extractPrimitiveType _ = Left $ TypeError sourcePos "Arraylengths need to be of integer type!"
 
-visitBlock :: (SymbolTable, Block) -> Either AnalysisError (SymbolTable, Block)
-visitBlock (st, Block decls stmnts)= do
+-- The third parameter 'curFun' is used to pass down the function in which we currently are,
+-- so that we can later check the return type when we are at a return statement
+visitBlock :: (SymbolTable, Block, Declaration) -> Either AnalysisError (SymbolTable, Block)
+visitBlock (st, Block decls stmnts, currFun)= do
     -- visit declarations
     (st1, new_decls) <- foldM declFun (st, []) (reverse decls)
     -- visit statements
@@ -188,11 +190,13 @@ visitBlock (st, Block decls stmnts)= do
             return (st1, new_decl : decls)
         stmntFun :: (SymbolTable, [Statement]) -> Statement -> Either AnalysisError (SymbolTable, [Statement])
         stmntFun (st, stmnts) stmnt = do
-            (st1, new_stmnt) <- visitStatement (st, stmnt)
+            (st1, new_stmnt) <- visitStatement (st, stmnt, currFun)
             return (st1, new_stmnt : stmnts)
 
-visitStatement :: (SymbolTable, Statement) -> Either AnalysisError (SymbolTable, Statement)
-visitStatement (st, stmnt@(AssignStatement lhs rhs sourcePos)) = do
+-- The third parameter 'curFun' is used to pass down the function in which we currently are,
+-- so that we can later check the return type when we are at a return statement
+visitStatement :: (SymbolTable, Statement, Declaration) -> Either AnalysisError (SymbolTable, Statement)
+visitStatement (st, stmnt@(AssignStatement lhs rhs sourcePos), curFun) = do
     -- visit lhs
     (st1, new_lhs) <- visitExpression (st, lhs)
     -- visit rhs
@@ -204,35 +208,45 @@ visitStatement (st, stmnt@(AssignStatement lhs rhs sourcePos)) = do
     if lhs_type /= rhs_type 
         then Left $ TypeError sourcePos $ "Types for assignment don't match!\nLeft: " ++ show lhs_type ++ "\nRight: " ++ show rhs_type 
         else return (st2, AssignStatement new_lhs new_rhs sourcePos)
-visitStatement (st, stmnt@(FunctionCallStatement fun_call sourcePos)) = do
+visitStatement (st, stmnt@(FunctionCallStatement fun_call sourcePos), curFun) = do
     -- visit funCall
     (st1, new_fun_call) <- visitExpression (st, fun_call)
     return (st1, FunctionCallStatement new_fun_call sourcePos)
-visitStatement (st, stmnt@(IfStatement cond then_block m_else_block sourcePos)) = do
+visitStatement (st, stmnt@(IfStatement cond then_block m_else_block sourcePos), curFun) = do
     -- visit cond
     (st1, new_cond) <- visitExpression (st, cond)
     -- visit then
-    (st2, new_then) <- visitBlock (st1, then_block)
+    (st2, new_then) <- visitBlock (st1, then_block, curFun)
     -- visit else (maybe)
     (st3, new_else) <- case m_else_block of
         Nothing -> return (st2, Nothing)
         Just else_block -> do
-                (st, new_block) <- visitBlock (st2, else_block)
+                (st, new_block) <- visitBlock (st2, else_block, curFun)
                 return (st, Just new_block)
     return (st3, IfStatement new_cond new_then new_else sourcePos)
-visitStatement (st, stmnt@(WhileStatement cond block sourcePos)) = do
+visitStatement (st, stmnt@(WhileStatement cond block sourcePos), curFun) = do
     -- visit cond
     (st1, new_cond) <- visitExpression (st, cond)
     -- visit block
-    (st2, new_block) <- visitBlock (st1, block)
+    (st2, new_block) <- visitBlock (st1, block, curFun)
     return (st2, WhileStatement new_cond new_block sourcePos)
-visitStatement (st, stmnt@(ReturnStatement m_expr sourcePos)) = do
-    -- TODO check that returnType matches, needs some state to be passed in the visitor
-    -- visit expression
+visitStatement (st, stmnt@(ReturnStatement m_expr sourcePos), curFun) = do
+    -- get exptected return type
+    (funName, returnType) <- case symbolForDeclaration curFun st of
+        Nothing -> Left $ TypeError sourcePos "return statement not inside function?? Your parser is fucked!"
+        Just (Symbol funName (FunctionType retType _) _ _) -> return (funName, retType)
+    -- check expression
     (st1, new_expr) <- case m_expr of
-        Nothing -> return (st, Nothing)
+        Nothing -> case returnType of
+            VoidType -> return (st, Nothing)
+            _ -> Left $ TypeError sourcePos $ "function " ++ funName ++ ", expected return value but didn't get one!"
         Just expr -> do
+            -- visit expression
             (st, new_expr) <- visitExpression (st, expr)
+            -- get type of expression
+            exprType <- getTypeForRhs st new_expr
+            -- check that types match
+            unless (returnType == exprType) (Left $ TypeError sourcePos $ "type of return statement doesn't match the expected type!\nExpected: " ++ show returnType ++ "\nActual: " ++ show exprType)
             return (st, Just new_expr)
     return (st1, ReturnStatement new_expr sourcePos)
 
