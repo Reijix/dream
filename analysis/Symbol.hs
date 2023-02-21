@@ -1,10 +1,13 @@
 module Symbol where
 
-import Syntax ( Declaration (FunctionDeclaration), Expression (Identifier), Block (Block) )
+import Syntax ( Declaration (FunctionDeclaration), Expression (Identifier), Block (Block), TypeName (ArrayTypeName), PrimitiveType (REAL, INT) )
 import Text.Parsec.Pos ( SourcePos, newPos )
 
--- TODO move this to typeanalysis later
-data Type = TDummy deriving (Show)
+data Type 
+    = VoidType
+    | FunctionType Type [Type]          -- returnType, parameterTypes
+    | ArrayType PrimitiveType [Int]     -- baseType,   lengths
+    | PrimType PrimitiveType deriving (Show, Eq)
 
 -- TODO maybe function_scope should be removed and instead we use global_scope...
 data Scope 
@@ -21,23 +24,27 @@ data Symbol = Symbol {
     }
 
 instance Show Symbol where
-    show (Symbol ident _ _ _) = "Symbol '" ++ ident ++ "'"
+    show (Symbol ident sType _ _) = "[Symbol '" ++ ident ++ "' '" ++ show sType ++ "']"
 
 -- dummy declaration for prelude definition
 preludePos :: SourcePos
 preludePos = newPos "Prelude" 0 0
 
 dummyDeclaration :: Declaration
-dummyDeclaration = FunctionDeclaration (Identifier "PreludeFunction") [] Nothing (Block [] []) preludePos
+dummyDeclaration = FunctionDeclaration (Identifier "PreludeFunction" preludePos) [] Nothing (Block [] []) preludePos
 
--- TODO add type information, when implementing typeanalysis
+int :: Type
+int = PrimType INT
+real :: Type
+real = PrimType REAL
+
 preludeSymbols :: [Symbol]
 preludeSymbols = [
-    Symbol "writeChar" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "readChar" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "writeInt" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "readInt" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "writeReal" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "readReal" TDummy dummyDeclaration FUNCTION_SCOPE,
-    Symbol "exit" TDummy dummyDeclaration FUNCTION_SCOPE
+    Symbol "writeChar" (FunctionType int [int]) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "readChar" (FunctionType int []) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "writeInt" (FunctionType int [int]) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "readInt" (FunctionType int []) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "writeReal" (FunctionType int [real]) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "readReal" (FunctionType real []) dummyDeclaration FUNCTION_SCOPE,
+    Symbol "exit" (FunctionType int [int]) dummyDeclaration FUNCTION_SCOPE
     ]

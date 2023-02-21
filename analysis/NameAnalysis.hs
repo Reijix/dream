@@ -5,17 +5,23 @@ import Syntax
 import Data.Map ( Map, lookup, empty, insert, notMember )
 import Prelude hiding ( lookup )
 import Data.Maybe ( fromMaybe )
-import Data.Foldable ( foldl' )
+import Data.Foldable (foldl')
+import Control.Monad (foldM)
+import AnalysisError
+import Data.Either.Extra (maybeToEither)
+import Debug.Trace
 
 type DefinitionTable = Map String Symbol
 type NAState = ([DefinitionTable], SymbolTable)
 
 -- runner method for nameanalysis, only this needs to be exported
-doNameAnalysis :: Program -> SymbolTable
-doNameAnalysis prog = st
+doNameAnalysis :: Program -> Either AnalysisError SymbolTable
+doNameAnalysis prog = do
+    (_, st) <- visitProgram ([preludeDefinitions], preludeSt) prog
+    return st
     where
-        (_, st) = visitProgram ([preludeDefinitions], emptySymbolTable) prog
         preludeDefinitions = foldl' insertSymb empty preludeSymbols
+        preludeSt = foldl' (\st symb@(Symbol name _ decl _) -> insertDeclarationSymbol decl symb st) emptySymbolTable preludeSymbols
         insertSymb :: DefinitionTable -> Symbol -> DefinitionTable
         insertSymb dt symb@(Symbol name _ _ _) = insert name symb dt
 
@@ -31,87 +37,107 @@ getSymbol name (dt:dts) =
 
 -- open new context and go over declarations
 -- first go over global variables and then over functions
-visitProgram :: NAState -> Program -> NAState
-visitProgram state (Program decls) = stateAfterFunctions
+visitProgram :: NAState -> Program -> Either AnalysisError NAState
+visitProgram st (Program decls) = do
+    st1@(dst1, inner_st1) <- foldM visitGlobalVariable st globalVariables
+    st2@(dst2, inner_st2) <- foldM collectFunctionSymbols st1 functionDeclarations
+    foldM visitFunctionDeclaration st2 functionDeclarations
     where
         globalVariables = [var | var@(VariableDeclaration {}) <- decls]
         functionDeclarations = [fun | fun@(FunctionDeclaration {}) <- decls]
-        stateAfterGlobalVariables = foldl' visitGlobalVariable state globalVariables
-        stateAfterFunCollection = foldl' collectFunctionSymbols stateAfterGlobalVariables functionDeclarations
-        stateAfterFunctions = foldl' visitFunctionDeclaration stateAfterFunCollection functionDeclarations
 
-collectFunctionSymbols :: NAState -> Declaration -> NAState
-collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name) params retType block sourcePos) =
-    if notMember name dt then (new_dt:dts, new_st)
-    else error ("Error during nameanalysis, functiondeclaration " ++ name ++ " already defined!\nat: [" ++ show sourcePos ++ "]")
-    where
-        symbol = Symbol name TDummy decl FUNCTION_SCOPE
-        new_dt = insert name symbol dt
-        new_st = insertDeclarationSymbol decl symbol st
+collectFunctionSymbols :: NAState -> Declaration -> Either AnalysisError NAState
+collectFunctionSymbols (dt:dts, st) decl@(FunctionDeclaration (Identifier name iSourcePos) params retType block sourcePos) = do
+    let symbol = Symbol name VoidType decl FUNCTION_SCOPE
+    let new_dt = insert name symbol dt
+    let new_st = insertDeclarationSymbol decl symbol st
 
-visitGlobalVariable :: NAState -> Declaration -> NAState
-visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName sourcePos) = 
-    if notMember name dt then (new_dt:dts, new_st)
-    else error ("Error during nameanalysis, global variable " ++ name ++ " multiple definitions!\nat: [" ++ show sourcePos ++ "]")
-    where
-        new_dt = insert name symbol dt
-        new_st = insertDeclarationSymbol decl symbol st
-        symbol = Symbol name TDummy decl GLOBAL_SCOPE
+    if notMember name dt 
+        then return (new_dt:dts, new_st)
+        else Left $ NameError sourcePos ("Functiondeclaration " ++ name ++ " already defined!")
 
-visitFunctionDeclaration :: NAState -> Declaration -> NAState
-visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name) params retType block sourcePos) = (dts, new_st)
-    where
-        inner_dts = empty:dts -- open new scope
-        -- visit parameters
-        param_state = foldl' visitParameterDeclaration (inner_dts, st) params
-        -- visit block
-        (_, new_st) = visitBlock param_state block
-
-visitParameterDeclaration :: NAState -> Declaration -> NAState
-visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier name) tName sourcePos) = 
-    if notMember name dt then (new_dt:dts, new_st)
-    else error ("Error during nameanalysis, parameterdeclaration " ++ name ++ " already defined!\nat: [" ++ show sourcePos ++ "]")
-    where
-        new_dt = insert name symbol dt
-        new_st = insertDeclarationSymbol decl symbol st
-        symbol = Symbol name TDummy decl PARAMETER_SCOPE
-
-visitLocalVariable :: NAState -> Declaration -> NAState
-visitLocalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name) tName sourcePos) =
-    if notMember name dt then (new_dt:dts, new_st)
-    else error ("Error during nameanalysis, local variable " ++ name ++ " already defined!\nat: [" ++ show sourcePos ++ "]")
-    where
-        new_dt = insert name symbol dt
-        new_st = insertDeclarationSymbol decl symbol st
-        symbol = Symbol name TDummy decl LOCAL_SCOPE
-
-visitBlock :: NAState -> Block -> NAState
-visitBlock (dts, st) (Block decls stmnts) = (dts, new_st)
-    where
-        -- visit declarations
-        (inner_dts, inner_st) = foldl' visitLocalVariable (empty:dts, st) decls
-        -- visit statements
-        (_, new_st) = foldl' visitStatement (inner_dts, inner_st) stmnts
+visitGlobalVariable :: NAState -> Declaration -> Either AnalysisError NAState
+visitGlobalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name iSourcePos) tName sourcePos) = do
+    let symbol = Symbol name VoidType decl GLOBAL_SCOPE
+    let new_dt = insert name symbol dt
+    let new_st = insertDeclarationSymbol decl symbol st
+    if notMember name dt 
+        then return (new_dt:dts, new_st)
+        else Left $ NameError sourcePos ("Global variable " ++ name ++ " multiple definitions!")
 
 
-visitStatement :: NAState -> Statement -> NAState
-visitStatement state (AssignStatement e1 e2 sourcePos) = visitExpression state e1 `visitExpression` e2
-visitStatement state (FunctionCallStatement e1 sourcePos) = visitExpression state e1
-visitStatement state (IfStatement e1 thenB (Just elseB) sourcePos) = visitExpression state e1 `visitBlock` thenB `visitBlock` elseB
-visitStatement state (IfStatement e1 thenB Nothing sourcePos) = visitExpression state e1 `visitBlock` thenB
-visitStatement state (WhileStatement e1 block sourcePos) = visitExpression state e1 `visitBlock` block
-visitStatement state (ReturnStatement (Just e) sourcePos) = visitExpression state e
-visitStatement state (ReturnStatement Nothing sourcePos) = state
+visitFunctionDeclaration :: NAState -> Declaration -> Either AnalysisError NAState
+visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name iSourcePos) params retType block sourcePos) = do
+    let inner_dts = empty:dts -- open new scope
+    -- visit parameters
+    param_state <- foldM visitParameterDeclaration (inner_dts, st) params
+    -- visit block
+    (_, new_st) <- visitBlock param_state block
+    return (dts, new_st)
 
-visitExpression :: NAState -> Expression -> NAState
-visitExpression state (ArrayAccess expr exprs sourcePos) = foldl' visitExpression (visitExpression state expr) exprs
-visitExpression state (BinaryExpression e1 op e2 sourcePos) = visitExpression state e1 `visitExpression` e2
-visitExpression state (Constant _ sourcePos) = state
-visitExpression state (FunctionCall expr exprs sourcePos) = foldl' visitExpression (visitExpression state expr) exprs
-visitExpression (dts, st) expr@(Identifier name) = 
-    case symbol of
-        Nothing -> error $ "Identifier is used but not defined: " ++ name ++ "\ndts is:\n" ++ show dts
-        Just symbol -> (dts, insertExpressionSymbol expr symbol st)
-    where
-        symbol = getSymbol name dts -- throws error if symbol is not defined
-visitExpression state (TypeCast e1 tName sourcePos) = visitExpression state e1
+
+
+visitParameterDeclaration :: NAState -> Declaration -> Either AnalysisError NAState
+visitParameterDeclaration (dt:dts, st) decl@(ParameterDeclaration (Identifier name iSourcePos) tName sourcePos) = do
+    let symbol = Symbol name VoidType decl PARAMETER_SCOPE
+    let new_dt = insert name symbol dt
+    let new_st = insertDeclarationSymbol decl symbol st
+    if notMember name dt 
+        then return (new_dt:dts, new_st)
+        else Left $ NameError sourcePos ("Parameterdeclaration " ++ name ++ " already defined!")
+
+
+visitLocalVariable :: NAState -> Declaration -> Either AnalysisError NAState
+visitLocalVariable (dt:dts, st) decl@(VariableDeclaration (Identifier name iSourcePos) tName sourcePos) = do
+    let symbol = Symbol name VoidType decl LOCAL_SCOPE
+    let new_dt = insert name symbol dt
+    let new_st = insertDeclarationSymbol decl symbol st
+    if notMember name dt 
+        then return (new_dt:dts, new_st)
+        else Left $ NameError sourcePos ("Local variable " ++ name ++ " already defined!")
+
+
+visitBlock :: NAState -> Block -> Either AnalysisError NAState
+visitBlock (dts, st) (Block decls stmnts) = do
+    -- visit declarations
+    (inner_dts, inner_st) <- foldM visitLocalVariable (empty:dts, st) decls
+    -- visit statements
+    (_, new_st) <- foldM visitStatement (inner_dts, inner_st) stmnts
+    return (dts, new_st)
+
+
+
+visitStatement :: NAState -> Statement -> Either AnalysisError NAState
+visitStatement st (AssignStatement e1 e2 sourcePos) = do
+    st1 <- visitExpression st e1 
+    visitExpression st1 e2
+visitStatement st (FunctionCallStatement e1 sourcePos) = visitExpression st e1
+visitStatement st (IfStatement e1 thenB (Just elseB) sourcePos) = do
+    st1 <- visitExpression st e1 
+    st2 <- visitBlock st1 thenB 
+    visitBlock st2 elseB
+visitStatement st (IfStatement e1 thenB Nothing sourcePos) = do
+    st1 <- visitExpression st e1
+    visitBlock st1 thenB
+visitStatement st (WhileStatement e1 block sourcePos) = do
+    st1 <- visitExpression st e1
+    visitBlock st1 block
+visitStatement st (ReturnStatement (Just e) sourcePos) = visitExpression st e
+visitStatement st (ReturnStatement Nothing sourcePos) = return st
+
+visitExpression :: NAState -> Expression -> Either AnalysisError NAState
+visitExpression st (ArrayAccess expr exprs sourcePos) = do
+    st1 <- visitExpression st expr
+    foldM visitExpression st1 exprs
+visitExpression st (BinaryExpression e1 op e2 sourcePos) = do
+    st1 <- visitExpression st e1
+    visitExpression st1 e2
+visitExpression st (Constant _ sourcePos) = return st
+visitExpression st (FunctionCall expr exprs sourcePos) = do
+    st1 <- visitExpression st expr
+    foldM visitExpression st1 exprs
+visitExpression (dts, st) expr@(Identifier name sourcePos) = do
+    symbol <- maybeToEither (NameError sourcePos $ "Identifier " ++ name ++ " is used but not defined!") (getSymbol name dts)
+    new_st <- maybeToEither (NameError sourcePos "identifier has not been declared before being used!") (insertExpressionSymbol expr symbol st)
+    return (dts, new_st)
+visitExpression st (TypeCast e1 tName sourcePos) = visitExpression st e1

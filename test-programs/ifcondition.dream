@@ -1,5 +1,6 @@
 func main () {
     f(x);
+    x := z[5];
     if x == 5
     then
         var y : real;
@@ -8,13 +9,15 @@ func main () {
     end;
 } end
 
-func f () : int {
+func f (a : int) : int {
     return 5;
 } end
 
 func g () : int {
     return 5;
 } end
+
+var z : int[5]
 
 var x : int
 

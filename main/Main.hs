@@ -9,6 +9,9 @@ import ConstantFolding (foldConstants)
 import NameAnalysis (doNameAnalysis)
 import Data.List (genericTake)
 import System.IO ( hGetContents, openFile, IOMode(ReadMode) )
+import TypeAnalysis (doTypeAnalysis)
+import AnalysisError (AnalysisError(TypeError, NameError))
+import SymbolTable (printSymbolTable, showSymbolTable)
 
 data CmdOption = CmdOption
   {
@@ -57,10 +60,19 @@ run (CmdOption sourceFile destinationFile dotFile) = do
   let ast = parseProgram sourceFile sourceText
   case ast of
     Left err -> print err
-    Right program -> do
+    Right !program -> do
       -- do constantFolding
       let !cfProg = foldConstants program
-      -- do nameAnalysis
-      let !symbTable = doNameAnalysis program
-      print cfProg
       generateDotFile dotFile cfProg
+      -- do nameAnalysis
+      let !naResult = doNameAnalysis program
+      let !symbTable = case naResult of
+            Left (NameError sourcePos err) -> error $ "NameError at " ++ show sourcePos ++ "\n" ++ err
+            Right st -> st
+      -- do typeAnalysis
+      let !mResult = doTypeAnalysis symbTable program
+      let !(st, taProg) = case mResult of
+            Left (TypeError sourcePos err) -> error $ "TypeError at " ++ show sourcePos ++ "\n" ++ err
+            Right (st, taProg) -> (st, taProg)
+      print taProg
+      generateDotFile dotFile taProg

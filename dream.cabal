@@ -25,14 +25,14 @@ library parser
     default-language: Haskell2010
 
 library analysis
-    exposed-modules:  NameAnalysis
+    exposed-modules:  NameAnalysis, TypeAnalysis, AnalysisError, SymbolTable
     build-depends:    base ^>=4.16.1.0,
                       containers,
                       parser,
-                      parsec
+                      parsec,
+                      extra
     other-modules:
-        Symbol,
-        SymbolTable
+        Symbol
     hs-source-dirs:   analysis
     default-language: Haskell2010
 
