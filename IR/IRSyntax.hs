@@ -9,7 +9,8 @@ data IRConstant
 data IRVariable = IRVar {
     varName :: String,
     varGlobal :: Bool,
-    varVirtualRegister :: Bool
+    varVirtualRegister :: Bool,
+    varType :: Type
     }
 
 data IROperand
@@ -30,11 +31,13 @@ data IRProgram = IRProgram {
     progFunction :: [IRFunction]
 }
 
+newtype LABEL = LBL String
+
 data IRInstruction
     = Jump Jump
     | Assignment Assignment
     | NOP
-    | LABEL
+    | LABEL LABEL
     | STORE
     | RET
 

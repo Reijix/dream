@@ -7,21 +7,21 @@ data Type
     = VoidType
     | FunctionType Type [Type]          -- returnType, parameterTypes
     | ArrayType PrimitiveType [Int]     -- baseType,   lengths
-    | PrimType PrimitiveType deriving (Show, Eq)
+    | PrimType PrimitiveType deriving (Show, Ord, Eq)
 
 -- TODO maybe function_scope should be removed and instead we use global_scope...
 data Scope 
     = GLOBAL_SCOPE
     | PARAMETER_SCOPE
     | LOCAL_SCOPE
-    | FUNCTION_SCOPE deriving (Show)
+    | FUNCTION_SCOPE deriving (Show, Ord, Eq)
 
 data Symbol = Symbol {
     symbolIdentifier :: String,         -- identifier
     symbolType :: Type,                 -- type
     symbolDeclaration :: Declaration,   -- node where this was declared
     symbolScope :: Scope                -- scope in which it was declared
-    }
+    } deriving (Ord, Eq)
 
 instance Show Symbol where
     show (Symbol ident sType _ _) = "[Symbol '" ++ ident ++ "' '" ++ show sType ++ "']"
