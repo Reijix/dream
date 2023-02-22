@@ -45,7 +45,15 @@ createIRVariable name varType = do
         Just idx -> do modify (\state -> state {variableNumbering = insert name (idx + 1) numbering}); return idx
     return $ IRVar (name ++ "$" ++ show idx) False False varType
 createVirtualRegister :: Type -> IRMonad IRVariable
-createVirtualRegister regType = undefined
+createVirtualRegister regType = do
+    -- get registerNum and currentFun from state
+    regNum <- gets nextVirtualRegisterNum
+    fun <- gets currentFun
+    -- create register
+    let register = IRVar ("%" ++ show regNum) False True regType
+    -- add register to currentFun
+    modify (\state -> state { currentFun = fun { funVirtualRegs = register : funVirtualRegs fun } })
+    return register
 createLabel :: IRMonad LABEL
 createLabel = do
     labelNum <- gets nextLabel
@@ -107,8 +115,10 @@ visitGlobalVariable decl@(VariableDeclaration (Identifier name _) _ _) = do
 
 visitLocalVariable :: Declaration -> IRMonad IRVariable
 visitLocalVariable decl@(VariableDeclaration (Identifier name _) _ _) = do
-
-    return undefined
+    -- get type
+    varType <- getTypeForDeclaration decl
+    -- create IRVariable
+    createIRVariable name varType
 
 visitParameterDeclaration :: Declaration -> IRMonad IRVariable
 visitParameterDeclaration decl@(ParameterDeclaration (Identifier name _) _ _) = do
@@ -303,5 +313,97 @@ visitExpression expr@(TypeCast innerExpr (PrimitiveTypeName pType) _) = do
     return $ IRVariable register
 visitExpression expr@(Constant (IntLit val) _) = return . IRConstant $ IRIntConstant val
 visitExpression expr@(Constant (RealLit val) _) = return . IRConstant $ IRRealConstant val
--- TODO
-visitExpression expr@(BinaryExpression leftExpr op rightExpr _) = undefined
+visitExpression expr@(BinaryExpression leftExpr Syntax.ADD rightExpr _) = visitArithmeticExpression expr
+visitExpression expr@(BinaryExpression leftExpr Syntax.SUB rightExpr _) = visitArithmeticExpression expr
+visitExpression expr@(BinaryExpression leftExpr Syntax.MUL rightExpr _) = visitArithmeticExpression expr
+visitExpression expr@(BinaryExpression leftExpr Syntax.DIV rightExpr _) = visitArithmeticExpression expr
+visitExpression expr@(BinaryExpression leftExpr Syntax.AND rightExpr _) = visitLogicalExpression expr
+visitExpression expr@(BinaryExpression leftExpr Syntax.OR rightExpr _) = visitLogicalExpression expr
+visitExpression expr@(BinaryExpression leftExpr Syntax.EQUALS rightExpr _) = visitCompareExpression expr
+visitExpression expr@(BinaryExpression leftExpr Syntax.NOT_EQUALS rightExpr _) = visitCompareExpression expr
+visitExpression expr@(BinaryExpression leftExpr Syntax.LESS rightExpr _) = visitCompareExpression expr
+visitExpression expr@(BinaryExpression leftExpr Syntax.LESS_EQUALS rightExpr _) = visitCompareExpression expr
+visitExpression expr@(BinaryExpression leftExpr Syntax.GREATER rightExpr _) = visitCompareExpression expr
+visitExpression expr@(BinaryExpression leftExpr Syntax.GREATER_EQUALS rightExpr _) = visitCompareExpression expr
+
+visitArithmeticExpression :: Expression -> IRMonad IROperand
+visitArithmeticExpression expr@(BinaryExpression leftExpr op rightExpr _) = do
+    -- visit operands
+    leftOp <- visitExpression leftExpr
+    rightOp <- visitExpression rightExpr
+    -- get type of expression
+    exprType <- getTypeForExpression expr
+    -- create target register
+    register <- createVirtualRegister exprType
+    -- create instruction
+    let instruction = case op of
+            Syntax.ADD -> Assignment $ BinaryOperation register leftOp rightOp IRSyntax.ADD
+            Syntax.SUB -> Assignment $ BinaryOperation register leftOp rightOp IRSyntax.SUB
+            Syntax.MUL -> Assignment $ BinaryOperation register leftOp rightOp IRSyntax.MUL
+            Syntax.DIV -> Assignment $ BinaryOperation register leftOp rightOp IRSyntax.DIV
+    appendInstruction instruction
+    return $ IRVariable register
+
+visitLogicalExpression :: Expression -> IRMonad IROperand
+visitLogicalExpression expr@(BinaryExpression leftExpr Syntax.AND rightExpr _) = do
+    -- create new label
+    label <- createLabel
+    -- save lastlabels to restore later
+    lastLabelLeftOld <- gets lastLabelLeft
+    lastLabelRightOld <- gets lastLabelRight
+    -- code (leftExpr, label, labelFalse)
+    setLastLabelLeft label
+    visitExpression leftExpr
+    -- label
+    appendInstruction $ LABEL label
+    -- code (rightExpr, labelTrue, labelFalse)
+    setLastLabelLeft lastLabelLeftOld
+    setLastLabelRight lastLabelRightOld
+    visitExpression rightExpr
+    -- restore labels
+    setLastLabelLeft lastLabelLeftOld
+    setLastLabelRight lastLabelRightOld
+    return undefined -- result of this shouldn't be used
+visitLogicalExpression expr@(BinaryExpression leftExpr Syntax.OR rightExpr _) = do
+    -- create new label
+    label <- createLabel
+    -- save lastlabels to restore later
+    lastLabelLeftOld <- gets lastLabelLeft
+    lastLabelRightOld <- gets lastLabelRight
+    -- code (leftExpr, labelTrue, label)
+    setLastLabelRight label
+    visitExpression leftExpr
+    -- label
+    appendInstruction $ LABEL label
+    -- code (rightExpr, labelTrue, labelFalse)
+    setLastLabelLeft lastLabelLeftOld
+    setLastLabelRight lastLabelRightOld
+    visitExpression rightExpr
+    -- restore labels
+    setLastLabelLeft lastLabelLeftOld
+    setLastLabelRight lastLabelRightOld
+    return undefined -- result of this shouldn't be used
+
+visitCompareExpression :: Expression -> IRMonad IROperand
+visitCompareExpression expr@(BinaryExpression leftExpr op rightExpr _) = do
+    -- visit operands
+    leftOp <- visitExpression leftExpr
+    rightOp <- visitExpression rightExpr
+    -- get labelTrue and labelFalse
+    lastLabelLeft <- gets lastLabelLeft
+    lastLabelRight <- gets lastLabelRight
+    -- create conditional jump to labelTrue
+    let condJump = case op of
+            EQUALS -> JEQ
+            NOT_EQUALS -> JNE
+            LESS -> JLT
+            LESS_EQUALS -> JLE
+            GREATER -> JGT
+            GREATER_EQUALS -> JGE
+    let successJump = Jump lastLabelLeft $ ConditionalJump leftOp rightOp condJump
+    -- create unconditional jump to labelFalse
+    let failureJump = Jump lastLabelRight JMP
+    -- append jumps
+    appendInstruction successJump
+    appendInstruction failureJump
+    return undefined -- result shouldn't be used
