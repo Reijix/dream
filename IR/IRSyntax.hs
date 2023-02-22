@@ -31,22 +31,22 @@ data IRProgram = IRProgram {
     progFunction :: [IRFunction]
 }
 
-newtype LABEL = LBL String
+newtype LABEL = LBL Int
 
 data IRInstruction
-    = Jump Jump
+    = Jump LABEL Jump
     | Assignment Assignment
     | NOP
     | LABEL LABEL
-    | STORE
-    | RET
+    | STORE IRVariable IROperand IROperand
+    | RET (Maybe IROperand)
 
 data Assignment
-    = BinaryOperation BinaryOperation
-    | CastOperation CastOperation
-    | MOV
-    | LOAD
-    | CALL
+    = BinaryOperation IRVariable IROperand IROperand BinaryOperation
+    | CastOperation IRVariable IROperand Type Type CastOperation
+    | MOV IRVariable IROperand
+    | LOAD IRVariable IRVariable IROperand
+    | CALL IRVariable String Type [IROperand]
 
 data CastOperation
     = I2R
@@ -59,7 +59,7 @@ data BinaryOperation
     | DIV
 
 data Jump 
-    = ConditionalJump ConditionalJump
+    = ConditionalJump IROperand IROperand ConditionalJump
     | JMP
 
 data ConditionalJump
