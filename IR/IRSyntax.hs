@@ -46,7 +46,7 @@ data Assignment
     | CastOperation IRVariable IROperand Type Type CastOperation
     | MOV IRVariable IROperand
     | LOAD IRVariable IRVariable IROperand
-    | CALL IRVariable String Type [IROperand]
+    | CALL (Maybe IRVariable) String Type [IROperand]
 
 data CastOperation
     = I2R
