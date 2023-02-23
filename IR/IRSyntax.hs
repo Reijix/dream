@@ -56,7 +56,7 @@ instance Show IRInstruction where
     show (Assignment ass) = show ass
     show NOP = "NOP"
     show (LABEL lbl) = show lbl ++ ":"
-    show (STORE target op index) = show target ++ "[" ++ show index ++ "]" ++ " := " ++ show op
+    show (STORE target index op) = show target ++ "[" ++ show index ++ "]" ++ " := store " ++ show op
     show (RET Nothing) = "ret"
     show (RET (Just op)) = "ret " ++ show op
 
@@ -70,7 +70,7 @@ instance Show Assignment where
     show (BinaryOperation target lhs rhs op) = show target ++ " := " ++ show op ++ " " ++ show lhs ++ ", " ++ show rhs
     show (CastOperation target op _ _ cast) = show target ++ " := " ++ show cast ++ " " ++ show op
     show (MOV target source) = show target ++ " := " ++ show source
-    show (LOAD target from index) = show target ++ " := " ++ show from ++ "[" ++ show index ++ "]"
+    show (LOAD target from index) = show target ++ " := load " ++ show from ++ "[" ++ show index ++ "]"
     show (CALL Nothing name fType args) = name ++ "(" ++ intercalate ", " (map show args) ++ ")"
     show (CALL (Just target) name fType args) = show target ++ " := " ++ "call " ++ name ++ "(" ++ intercalate ", " (map show args) ++ ")"
 

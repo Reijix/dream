@@ -1,15 +1,27 @@
-func main () {
+func main () : int {
     f(x);
+    x := readInt();
     x := z[5];
     if x == 5
     then
         var y : real;
+        y := x + x;
     else
         var x : real;
+        x := z[3] * y;
     end;
 } end
 
 func f (a : int) : int {
+    var u : int;
+    var v : int;
+    var w : int;
+    if u == 5
+    then
+        var u : real;
+    else
+        var v : real;
+    end;
     return 5;
 } end
 

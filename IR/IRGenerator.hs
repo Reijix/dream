@@ -9,7 +9,9 @@ import Data.Foldable ( foldl' )
 import Data.Map
 import Prelude hiding ( lookup )
 import Data.Maybe (fromJust)
+import Data.Char (ord)
 
+-- TODO reset state between functions (variable naming...)
 
 {-
 NOTE: 
@@ -93,15 +95,15 @@ createIndexForArrayAccess (ArrayType _ dimensions) ops = do
             return $ IRVariable register
 
 -- helpers for extracting types out of the symbol table
+-- TODO these functions need to be double and triple checked...
 getTypeForDeclaration :: Declaration -> IRMonad Type
 getTypeForDeclaration decl = symbolType <$> getSymbolForDeclaration decl
 getTypeForExpression :: Expression -> IRMonad Type
-getTypeForExpression (FunctionCall expr _ _) = do
+getTypeForExpression expr = do
     sType <- symbolType <$> getSymbolForExpression expr
     case sType of
         FunctionType retType _ -> return retType
-        _ -> error "function in functioncall doesnt have functiontype, compiler error!!!"
-getTypeForExpression expr = symbolType <$> getSymbolForExpression expr
+        _ -> return sType
 getSymbolForDeclaration :: Declaration -> IRMonad Symbol
 getSymbolForDeclaration decl = do
     st <- gets symbolTable
@@ -208,6 +210,7 @@ visitStatement (AssignStatement lhs rhs _) = do
     -- visit lhs (and prepare state before doing so)
     modify (\state -> state {isLValue = True})
     lhsOperand <- visitExpression lhs
+    modify (\state -> state {isLValue = False})
 
     -- build instruction for assignment, either MOV or STORE
     instruction <- case lhs of
@@ -357,6 +360,7 @@ visitExpression expr@(TypeCast innerExpr (PrimitiveTypeName pType) _) = do
     appendInstruction instruction
     return $ IRVariable register
 visitExpression expr@(Constant (IntLit val) _) = return . IRConstant $ IRIntConstant val
+visitExpression expr@(Constant (CharLit val) _) = return . IRConstant . IRIntConstant $ ord val
 visitExpression expr@(Constant (RealLit val) _) = return . IRConstant $ IRRealConstant val
 visitExpression expr@(BinaryExpression leftExpr Syntax.ADD rightExpr _) = visitArithmeticExpression expr
 visitExpression expr@(BinaryExpression leftExpr Syntax.SUB rightExpr _) = visitArithmeticExpression expr
