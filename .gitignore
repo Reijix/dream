@@ -104,3 +104,6 @@ dreamci
 # dot files
 *.dot
 *.pdf
+
+# ir files
+*.ir

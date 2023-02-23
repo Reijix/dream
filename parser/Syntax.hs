@@ -63,14 +63,3 @@ data Literal
     | RealLit Double
     | CharLit Char
     deriving (Eq, Ord, Show)
-
-data ASTNode
-    = ASTExpression Expression
-    | ASTDeclaration Declaration
-    | ASTBinOp BinOp
-    | ASTLiteral Literal
-    | ASTStatement Statement
-    | ASTBlock Block
-    | ASTTypeName TypeName
-    | ASTProgram Program
-    deriving (Eq, Ord, Show)

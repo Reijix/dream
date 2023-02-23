@@ -41,7 +41,7 @@ visitFunction handle (IRFunction name retType instructions params lVars virtualR
     -- print local variables
     printVariableDeclarations handle lVars indentFunction ".local"
     -- print virtual registers
-    printVariableDeclarations handle virtualRegs indentFunction ".virt"
+    printVariableDeclarations handle (reverse virtualRegs) indentFunction ".virt"
     -- print code
     hPutStrLn handle $ indentFunction ++ ".code"
     mapM_ (visitInstruction handle) instructions
