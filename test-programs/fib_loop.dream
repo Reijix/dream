@@ -1,0 +1,33 @@
+func fib(n : int): int {
+  var a : int;
+  var b : int;
+  var i : int;
+
+  a := 1;
+  b := 1;
+  i := 2;
+  while i < n do
+    var t : int;
+
+    t := a + b;
+    a := b;
+    b := t;
+    i := i + 1;
+  end;
+  return b;
+} end
+
+
+func main(): int {
+  var n : int;
+  var fib_n : int;
+
+  writeChar('n');
+  writeChar(':');
+  writeChar(' ');
+  n := readInt();
+  fib_n := fib(n);
+  writeInt(fib_n);
+  writeChar(10);
+  return 0;
+} end

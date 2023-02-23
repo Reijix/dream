@@ -8,7 +8,6 @@ import Data.Foldable (Foldable(foldr'))
 import Data.Maybe (fromMaybe)
 import Control.Monad (foldM, when, unless)
 import Data.Either.Extra
-import Debug.Trace
 
 -- TODO improve error messages
 
@@ -35,6 +34,7 @@ getTypeForRhs st expr@(ArrayAccess var exprs sourcePos) = do
         _ -> Left $ TypeError sourcePos "Array variable doesn't have array type!"
 getTypeForRhs st expr@(BinaryExpression e1 _ _ sourcePos) = getTypeForRhs st e1
 getTypeForRhs st expr@(Constant (IntLit _) sourcePos) = return $ PrimType INT
+getTypeForRhs st expr@(Constant (CharLit _) sourcePos) = return $ PrimType INT
 getTypeForRhs st expr@(Constant (RealLit _) sourcePos) = return $ PrimType REAL
 getTypeForRhs st expr@(FunctionCall funName _ sourcePos) = do
     funType <- getTypeForRhs st funName
@@ -298,13 +298,13 @@ visitExpression (st, expr@(FunctionCall fun args sourcePos)) = do
     -- make sure that types match
     funType <- getTypeForRhs st2 new_fun
     casted_args <- case funType of
-        FunctionType retType expectedArgTypes -> checkArgTypes st2 expectedArgTypes new_args
+        ft@(FunctionType retType expectedArgTypes) -> checkArgTypes st2 expectedArgTypes new_args
         _ -> Left $ TypeError sourcePos $ "functioncall on non-function variable, type is: " ++ show funType
     return (st2, FunctionCall new_fun casted_args sourcePos)
     where
         checkArgTypes :: SymbolTable -> [Type] -> [Expression] -> Either AnalysisError [Expression]
         checkArgTypes st expectedTypes arguments = do 
-            when (length expectedTypes /= length arguments) $ Left $ TypeError sourcePos "Number of arguments for functionCall doesn't match!"
+            when (length expectedTypes /= length arguments) $ Left $ TypeError sourcePos $ "Number of arguments for functionCall doesn't match!\nexpected: " ++ show (length expectedTypes) ++ "\nactual:" ++ show (length arguments) ++ "\nexpected types: " ++ show expectedTypes
             let zipped = zip expectedTypes arguments
             foldM (\x (a,b) -> (
                 do
