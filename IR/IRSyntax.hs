@@ -24,7 +24,7 @@ data IROperand
     | IRConstant IRConstant
 instance Show IROperand where
     show (IRVariable var) = show var
-    show (IRConstant constant) = show constant
+    show (IRConstant constant) = "$" ++ show constant
 
 data IRFunction = IRFunction {
     funName :: String,
@@ -42,7 +42,7 @@ data IRProgram = IRProgram {
 
 newtype LABEL = LBL Int
 instance Show LABEL where
-    show (LBL num) = show num
+    show (LBL num) = "L" ++ show num
 
 data IRInstruction
     = Jump LABEL Jump
@@ -67,12 +67,12 @@ data Assignment
     | LOAD IRVariable IRVariable IROperand
     | CALL (Maybe IRVariable) String Type [IROperand]
 instance Show Assignment where
-    show (BinaryOperation target lhs rhs op) = show target ++ " := " ++ show lhs ++ " " ++ show op ++ " " ++ show rhs
+    show (BinaryOperation target lhs rhs op) = show target ++ " := " ++ show op ++ " " ++ show lhs ++ ", " ++ show rhs
     show (CastOperation target op _ _ cast) = show target ++ " := " ++ show cast ++ " " ++ show op
     show (MOV target source) = show target ++ " := " ++ show source
     show (LOAD target from index) = show target ++ " := " ++ show from ++ "[" ++ show index ++ "]"
     show (CALL Nothing name fType args) = name ++ "(" ++ intercalate ", " (map show args) ++ ")"
-    show (CALL (Just target) name fType args) = show target ++ " := " ++ name ++ "(" ++ intercalate ", " (map show args) ++ ")"
+    show (CALL (Just target) name fType args) = show target ++ " := " ++ "call " ++ name ++ "(" ++ intercalate ", " (map show args) ++ ")"
 
 data CastOperation
     = I2R
@@ -87,17 +87,17 @@ data BinaryOperation
     | MUL
     | DIV
 instance Show BinaryOperation where
-    show ADD = "+"
-    show SUB = "-"
-    show MUL = "*"
-    show DIV = "/"
+    show ADD = "addq"
+    show SUB = "subq"
+    show MUL = "mulq"
+    show DIV = "divq"
 
 
 data Jump 
     = ConditionalJump IROperand IROperand ConditionalJump
     | JMP
 instance Show Jump where
-    show (ConditionalJump lOp rOp cnd) = show cnd ++ " " ++ show lOp ++ " " ++ show rOp
+    show (ConditionalJump lOp rOp cnd) = show cnd ++ " " ++ show lOp ++ ", " ++ show rOp ++ ","
     show JMP = "JMP"
 
 

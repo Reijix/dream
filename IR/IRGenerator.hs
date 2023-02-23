@@ -50,7 +50,7 @@ createVirtualRegister regType = do
     regNum <- gets nextVirtualRegisterNum
     fun <- gets currentFun
     -- create register
-    let register = IRVar ("%" ++ show regNum) False True regType
+    let register = IRVar ("%v" ++ show regNum) False True regType
     -- add register to currentFun
     modify (\state -> state { currentFun = fun { funVirtualRegs = register : funVirtualRegs fun }, nextVirtualRegisterNum = regNum + 1 })
     return register
