@@ -52,7 +52,7 @@ createVirtualRegister regType = do
     -- create register
     let register = IRVar ("%" ++ show regNum) False True regType
     -- add register to currentFun
-    modify (\state -> state { currentFun = fun { funVirtualRegs = register : funVirtualRegs fun } })
+    modify (\state -> state { currentFun = fun { funVirtualRegs = register : funVirtualRegs fun }, nextVirtualRegisterNum = regNum + 1 })
     return register
 createLabel :: IRMonad LABEL
 createLabel = do
@@ -94,26 +94,31 @@ createIndexForArrayAccess (ArrayType _ dimensions) ops = do
 
 -- helpers for extracting types out of the symbol table
 getTypeForDeclaration :: Declaration -> IRMonad Type
-getTypeForDeclaration decl = do
-    st <- gets symbolTable
-    let (Just symbol) = symbolForDeclaration decl st
-    return $ symbolType symbol
+getTypeForDeclaration decl = symbolType <$> getSymbolForDeclaration decl
 getTypeForExpression :: Expression -> IRMonad Type
-getTypeForExpression expr = do
-    st <- gets symbolTable
-    let symbol = case symbolForExpression expr st of
-            Nothing -> error $ "no symbol for expression: " ++ show expr
-            Just s -> s
-    return $ symbolType symbol
+getTypeForExpression (FunctionCall expr _ _) = do
+    sType <- symbolType <$> getSymbolForExpression expr
+    case sType of
+        FunctionType retType _ -> return retType
+        _ -> error "function in functioncall doesnt have functiontype, compiler error!!!"
+getTypeForExpression expr = symbolType <$> getSymbolForExpression expr
 getSymbolForDeclaration :: Declaration -> IRMonad Symbol
 getSymbolForDeclaration decl = do
     st <- gets symbolTable
     return . fromJust $ symbolForDeclaration decl st
 getSymbolForExpression :: Expression -> IRMonad Symbol
-getSymbolForExpression expr = do
+getSymbolForExpression (ArrayAccess expr _ _) = do -- TODO expr should have arraytype!!
     st <- gets symbolTable
     return . fromJust $ symbolForExpression expr st
-
+getSymbolForExpression (BinaryExpression expr _ _ _) = getSymbolForExpression expr
+-- TODO do constants have symbols?? No??
+getSymbolForExpression (FunctionCall expr _ _) = do
+    st <- gets symbolTable
+    return . fromJust $ symbolForExpression expr st
+getSymbolForExpression expr@(Identifier {}) = do
+    st <- gets symbolTable
+    return . fromJust $ symbolForExpression expr st
+getSymbolForExpression (TypeCast expr _ _) = getSymbolForExpression expr
 -- runner function that generates the IR AST for a given dream AST
 generateIR :: SymbolTable -> Program -> IRProgram
 generateIR st prog = evalState (visitProgram prog) initialState
@@ -146,7 +151,13 @@ visitLocalVariable decl@(VariableDeclaration (Identifier name _) _ _) = do
     -- get type
     varType <- getTypeForDeclaration decl
     -- create IRVariable
-    createIRVariable name varType
+    irVar <- createIRVariable name varType
+    -- get symbol
+    symbol <- getSymbolForDeclaration decl
+    -- add to definedVars
+    defVars <- gets definedVariables
+    modify (\state -> state {definedVariables = insert symbol irVar defVars })
+    return irVar
 
 visitParameterDeclaration :: Declaration -> IRMonad IRVariable
 visitParameterDeclaration decl@(ParameterDeclaration (Identifier name _) _ _) = do
@@ -182,7 +193,8 @@ visitBlock :: Block -> IRMonad ()
 visitBlock (Block decls stmnts) = do
     -- visit local variables and insert into state
     localVars <- mapM visitLocalVariable decls
-    modify (\state -> state {currentFun = (currentFun state) {funLocalVars = localVars} })
+    currFun <- gets currentFun
+    modify (\state -> state {currentFun = (currentFun state) {funLocalVars = funLocalVars currFun ++ localVars} })
 
     -- visit statements
     foldM_ (\b a -> visitStatement a) () stmnts
@@ -326,7 +338,10 @@ visitExpression expr@(Identifier name _) = do
     -- lookup identifier in defined vars and return the associated IRVariable
     definedVars <- gets definedVariables
     symbol <- getSymbolForExpression expr
-    let (Just var) = lookup symbol definedVars
+    let varM = lookup symbol definedVars
+    let var = case varM of
+            Nothing -> error $ "this shouldnt happen, no defined irVariable for symbol: " ++ show symbol ++ "\ndefined vars: " ++ show definedVars
+            Just var -> var
     return $ IRVariable var
 visitExpression expr@(TypeCast innerExpr (PrimitiveTypeName pType) _) = do
     -- visit innerExpr

@@ -10,11 +10,11 @@ data Type
     | PrimType PrimitiveType deriving (Ord, Eq)
 instance Show Type where
     show VoidType = "void"
-    show (FunctionType retType paramTypes) = foldr foldParams " -> " paramTypes ++ show retType
+    show (FunctionType retType paramTypes) = foldr foldParams "" paramTypes ++ show retType
         where
             foldParams :: Type -> String -> String
             foldParams pType rest = show pType ++ " -> " ++ rest
-    show (ArrayType baseType dimensions) = show baseType ++ foldl foldDims "" dimensions
+    show (ArrayType baseType dimensions) = show (PrimType baseType) ++ foldl foldDims "" dimensions
         where
             foldDims :: String -> Int -> String
             foldDims rest dim = rest ++ "[" ++ show dim ++ "]" 
@@ -34,9 +34,8 @@ data Symbol = Symbol {
     symbolDeclaration :: Declaration,   -- node where this was declared
     symbolScope :: Scope                -- scope in which it was declared
     } deriving (Ord, Eq)
-
 instance Show Symbol where
-    show (Symbol ident sType _ _) = "[Symbol '" ++ ident ++ "' '" ++ show sType ++ "']"
+    show (Symbol ident sType decl scope) = "[Symbol '" ++ ident ++ "' '" ++ show sType ++ "' '" ++ show scope ++ "']"
 
 -- dummy declaration for prelude definition
 preludePos :: SourcePos
