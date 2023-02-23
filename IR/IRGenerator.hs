@@ -65,6 +65,32 @@ setLastLabelRight :: LABEL -> IRMonad ()
 setLastLabelRight label = modify (\state -> state {lastLabelRight = label})
 setIsLValue :: Bool -> IRMonad ()
 setIsLValue new = modify (\state -> state {isLValue = new})
+createIndexForArrayAccess :: Type -> [IROperand] -> IRMonad IROperand
+createIndexForArrayAccess (ArrayType _ dimensions) ops = do
+    -- assertion: (length dimensions) == (lengths exprs)
+    let zipped = reverse $ zip ops [1..length dimensions]
+    let (outerOp, _) = head zipped
+    let zipped' = tail zipped
+    foldM doAdd outerOp zipped'
+    where
+        mapFun :: (IROperand, Int) -> IRMonad IROperand
+        mapFun (op, idx) = undefined
+        doAdd :: IROperand -> (IROperand, Int) -> IRMonad IROperand
+        doAdd lastAdd (op, idx) = do
+            let dims = Prelude.drop idx dimensions
+            multResult <- foldM doMult op dims
+            -- create register for result
+            register <- createVirtualRegister $ PrimType INT
+            appendInstruction . Assignment $ BinaryOperation register multResult lastAdd IRSyntax.ADD 
+            return $ IRVariable register
+        doMult :: IROperand -> Int -> IRMonad IROperand
+        doMult lastMul dimension = do
+            -- create register for result
+            register <- createVirtualRegister $ PrimType INT
+            -- add instruction
+            let instruction = Assignment $ BinaryOperation register lastMul (IRConstant $ IRIntConstant dimension) IRSyntax.MUL
+            appendInstruction instruction
+            return $ IRVariable register
 
 -- helpers for extracting types out of the symbol table
 getTypeForDeclaration :: Declaration -> IRMonad Type
@@ -75,7 +101,9 @@ getTypeForDeclaration decl = do
 getTypeForExpression :: Expression -> IRMonad Type
 getTypeForExpression expr = do
     st <- gets symbolTable
-    let (Just symbol) = symbolForExpression expr st
+    let symbol = case symbolForExpression expr st of
+            Nothing -> error $ "no symbol for expression: " ++ show expr
+            Just s -> s
     return $ symbolType symbol
 getSymbolForDeclaration :: Declaration -> IRMonad Symbol
 getSymbolForDeclaration decl = do
@@ -259,9 +287,11 @@ visitExpression expr@(ArrayAccess aVar accesses _) = do
     -- restore old isLValue
     setIsLValue isLValueOld
 
+    -- get array type to extract the dimensions
+    arrayType <- getTypeForExpression aVar
+
     -- convert the accesses to a single index in row-major-order
-    -- TODO
-    index <- undefined
+    index <- createIndexForArrayAccess arrayType sizeOperands
 
     -- if we are an LValue just return the index, otheriwse use a load instruction to fetch the data
     if isLValueOld 

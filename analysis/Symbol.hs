@@ -7,7 +7,19 @@ data Type
     = VoidType
     | FunctionType Type [Type]          -- returnType, parameterTypes
     | ArrayType PrimitiveType [Int]     -- baseType,   lengths
-    | PrimType PrimitiveType deriving (Show, Ord, Eq)
+    | PrimType PrimitiveType deriving (Ord, Eq)
+instance Show Type where
+    show VoidType = "void"
+    show (FunctionType retType paramTypes) = foldr foldParams " -> " paramTypes ++ show retType
+        where
+            foldParams :: Type -> String -> String
+            foldParams pType rest = show pType ++ " -> " ++ rest
+    show (ArrayType baseType dimensions) = show baseType ++ foldl foldDims "" dimensions
+        where
+            foldDims :: String -> Int -> String
+            foldDims rest dim = rest ++ "[" ++ show dim ++ "]" 
+    show (PrimType INT) = "int"
+    show (PrimType REAL) = "real"
 
 -- TODO maybe function_scope should be removed and instead we use global_scope...
 data Scope 
