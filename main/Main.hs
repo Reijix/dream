@@ -8,10 +8,12 @@ import Parser (parseProgram)
 import ConstantFolding (foldConstants)
 import NameAnalysis (doNameAnalysis)
 import Data.List (genericTake)
-import System.IO ( hGetContents, openFile, IOMode(ReadMode) )
+import System.IO ( hGetContents, openFile, IOMode(ReadMode, WriteMode), hClose )
 import TypeAnalysis (doTypeAnalysis)
 import AnalysisError (AnalysisError(TypeError, NameError))
 import SymbolTable (printSymbolTable, showSymbolTable)
+import IRGenerator (generateIR)
+import DumpIR (dumpIR)
 
 data CmdOption = CmdOption
   {
@@ -74,5 +76,10 @@ run (CmdOption sourceFile destinationFile dotFile) = do
       let !(st, taProg) = case mResult of
             Left (TypeError sourcePos err) -> error $ "TypeError at " ++ show sourcePos ++ "\n" ++ err
             Right (st, taProg) -> (st, taProg)
-      print taProg
+      -- print taProg
       generateDotFile dotFile taProg
+      let ir = generateIR st taProg 
+      print ir
+      irFile <- openFile "foo.ir" WriteMode
+      dumpIR irFile ir
+      hClose irFile
