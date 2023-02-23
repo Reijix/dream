@@ -58,6 +58,16 @@ library ir
     hs-source-dirs:   IR
     default-language: Haskell2010
 
+library backend
+    exposed-modules:  ArchX86, MemoryLocation
+    build-depends:    base ^>=4.16.1.0,
+                      analysis,
+                      ir,
+                      containers,
+                      mtl
+    hs-source-dirs:   backend
+    default-language: Haskell2010
+
 executable dreamc
     main-is:          Main.hs
     build-depends:    base,

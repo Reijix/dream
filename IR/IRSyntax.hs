@@ -15,7 +15,7 @@ data IRVariable = IRVar {
     varGlobal :: Bool,
     varVirtualRegister :: Bool,
     varType :: Type
-    }
+    } deriving (Eq, Ord)
 instance Show IRVariable where
     show (IRVar name _ _ vType) = name
 
@@ -34,6 +34,10 @@ data IRFunction = IRFunction {
     funLocalVars :: [IRVariable],
     funVirtualRegs :: [IRVariable]
 } deriving (Show)
+instance Eq IRFunction where
+    fun1 == fun2 = funName fun1 == funName fun2
+instance Ord IRFunction where
+    fun1 <= fun2 = funName fun1 <= funName fun2
 
 data IRProgram = IRProgram {
     progGlobalVars :: [IRVariable],
