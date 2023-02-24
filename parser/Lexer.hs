@@ -1,19 +1,19 @@
 module Lexer where
 
-import Text.Parsec.String (Parser)
 import Text.Parsec.Language (emptyDef)
-
+import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
 
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser style
-    where 
-        ops = ["+","-", "*", "/", ":=", "or", "and", "==", "!=", "<", "<=", ">", ">="]
-        names = ["def", "var", "int", "real", "func", "end", "return", "as"]
-        style = emptyDef {
-            Tok.commentLine = "#",
-            Tok.reservedOpNames = ops,
-            Tok.reservedNames = names
+  where
+    ops = ["+", "-", "*", "/", ":=", "or", "and", "==", "!=", "<", "<=", ">", ">="]
+    names = ["def", "var", "int", "real", "func", "end", "return", "as"]
+    style =
+      emptyDef
+        { Tok.commentLine = "#",
+          Tok.reservedOpNames = ops,
+          Tok.reservedNames = names
         }
 
 integer :: Parser Integer

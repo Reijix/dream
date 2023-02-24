@@ -107,3 +107,7 @@ dreamci
 
 # ir files
 *.ir
+
+# output
+*.s
+*.out
