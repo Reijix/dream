@@ -1,4 +1,4 @@
-module MemoryLocationAssigner where
+module MemoryLocationAssigner (assignMemoryLocations, scratchRegisters) where
 
 import ArchX86 (sizeOfAddress, sizeOfType)
 import Control.Monad.State
@@ -14,6 +14,14 @@ data MLState = MLState
 
 type MLMonad = State MLState
 
+scratchRegisters :: [MemoryLocation]
+scratchRegisters =
+  [ HardwareRegister "r12" 8,
+    HardwareRegister "r13" 8,
+    HardwareRegister "r14" 8,
+    HardwareRegister "r15" 8
+  ]
+
 assignMemoryLocations :: IRProgram -> (Map IRVariable MemoryLocation, Map IRFunction Int)
 assignMemoryLocations prog = (ml, sfs)
   where
@@ -24,7 +32,6 @@ visitProgram :: IRProgram -> MLMonad ()
 visitProgram (IRProgram gVars functions) = do
   mapM_ assignGlobalVariable gVars
   mapM_ assignFunction functions
-  return undefined
 
 assignGlobalVariable :: IRVariable -> MLMonad ()
 assignGlobalVariable var@(IRVar name True False _) = do
@@ -36,12 +43,14 @@ assignFunction fun@(IRFunction _ _ _ params localVars virtualRegs) = do
   -- visit local variables
   mapM_ assignLocalVariable localVars
   -- visit virtual registers (uses same method as local variables)
-  mapM_ assignLocalVariable virtualRegs
+  mapM_ assignLocalVariable $ reverse virtualRegs
   sfs <- gets stackFrameSizes
   off <- gets offset
   modify (\state -> state {stackFrameSizes = insert fun (-off) sfs, offset = sizeOfAddress * 2})
   -- visit parameters
   mapM_ assignParameter params
+  -- reset offset
+  modify (\state -> state {offset = 0})
 
 assignLocalVariable :: IRVariable -> MLMonad ()
 assignLocalVariable var@(IRVar name False _ varType) = do

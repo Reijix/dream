@@ -59,7 +59,7 @@ library ir
     default-language: Haskell2010
 
 library backend
-    exposed-modules:  ArchX86, MemoryLocation
+    exposed-modules:  ArchX86, MemoryLocation, CodeGenerator, MemoryLocationAssigner
     build-depends:    base ^>=4.16.1.0,
                       analysis,
                       ir,
@@ -76,7 +76,9 @@ executable dreamc
                       dot,
                       constantfolding,
                       analysis,
-                      ir
+                      ir,
+                      backend,
+                      process
     hs-source-dirs:   main
     default-language: Haskell2010
 executable dreamci

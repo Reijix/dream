@@ -3,6 +3,7 @@
 module Main where
 
 import AnalysisError (AnalysisError (NameError, TypeError))
+import CodeGenerator
 import ConstantFolding (foldConstants)
 import Data.List (genericTake)
 import Data.Semigroup ((<>))
@@ -14,6 +15,7 @@ import Options.Applicative
 import Parser (parseProgram)
 import SymbolTable (printSymbolTable, showSymbolTable)
 import System.IO (IOMode (ReadMode, WriteMode), hClose, hGetContents, openFile)
+import System.Process
 import TypeAnalysis (doTypeAnalysis)
 
 data CmdOption = CmdOption
@@ -86,3 +88,11 @@ run (CmdOption sourceFile destinationFile dotFile) = do
       irFile <- openFile "foo.ir" WriteMode
       dumpIR irFile ir
       hClose irFile
+      exeFile <- openFile "foo.s" WriteMode
+      generateCode exeFile ir
+      hClose exeFile
+      -- compile stdlib
+      callCommand "cd runtime_lib && make"
+      callCommand "as foo.s -o foo.out"
+      callCommand "ld foo.out runtime_lib/dreamlib.a -o foo.exe"
+      callCommand "chmod +x foo.exe"
