@@ -5,7 +5,8 @@ module Main where
 import AnalysisError (AnalysisError (NameError, TypeError))
 import CodeGenerator
 import ConstantFolding (foldConstants)
-import Data.List (genericTake)
+import Control.Monad.Except
+import Data.Either.Extra (mapLeft)
 import Data.Semigroup ((<>))
 import Dot (generateDotFile)
 import DumpIR (dumpIR)
@@ -13,7 +14,8 @@ import IRGenerator (generateIR)
 import NameAnalysis (doNameAnalysis)
 import Options.Applicative
 import Parser (parseProgram)
-import SymbolTable (printSymbolTable, showSymbolTable)
+import ParserError
+import System.Directory.Extra (removeFile)
 import System.IO (IOMode (ReadMode, WriteMode), hClose, hGetContents, openFile)
 import System.Process
 import TypeAnalysis (doTypeAnalysis)
@@ -21,7 +23,10 @@ import TypeAnalysis (doTypeAnalysis)
 data CmdOption = CmdOption
   { sourceFile :: String,
     destinationFile :: String,
-    dotFile :: String
+    dotFile :: Bool,
+    keep :: Bool,
+    irDump :: Bool,
+    noRuntime :: Bool
   }
 
 cmdOption :: Parser CmdOption
@@ -32,17 +37,32 @@ cmdOption =
       ( metavar "<source file>"
       )
     <*> strOption
-      ( short 'o'
+      ( long "out"
+          <> short 'o'
           <> metavar "<destination file>"
           <> help "Place the output into <destination file>."
           <> showDefault
-          <> value "a.out"
+          <> value "out"
       )
-    <*> strOption
+    <*> switch
       ( long "dot"
-          <> metavar "<dot file>"
-          <> help "Dump the AST in .dot format to <dot file>."
-          <> value ""
+          <> short 'd'
+          <> help "Dump the AST in .dot format (as used by graphviz) to <destination>.dot and <destination>.typed.dot (being the AST after the typeanalysis)"
+      )
+    <*> switch
+      ( long "keep"
+          <> short 'k'
+          <> help "Keep all files created in the build process (e.g. _.s, _.o, ...)"
+      )
+    <*> switch
+      ( long "dump-ir"
+          <> short 'i'
+          <> help "Dump the immediate representation to a file <destination>.ir"
+      )
+    <*> switch
+      ( long "no-runtime"
+          <> short 'r'
+          <> help "Build the program without a runtime library (useful for compiling your own runtime functions)"
       )
 
 main :: IO ()
@@ -56,43 +76,95 @@ main = run =<< execParser opts
             <> header "dreamc, the compiler for the dream language"
         )
 
-run :: CmdOption -> IO ()
--- no dotfile
-run (CmdOption _ _ []) = return ()
--- dotfile
-run (CmdOption sourceFile destinationFile dotFile) = do
-  source <- openFile sourceFile ReadMode
-  sourceText <- hGetContents source
+data CompilerError
+  = AnalysisError AnalysisError
+  | ParserError ParserError
 
-  let ast = parseProgram sourceFile sourceText
-  case ast of
+instance Show CompilerError where
+  show (AnalysisError ae) = "Compiling your program failed during analysis!\n" ++ show ae
+  show (ParserError pe) = "Compiling your program failed during parsing!\n" ++ show pe
+
+run :: CmdOption -> IO ()
+run cmdOption = do
+  result <- runExceptT $ runM cmdOption
+  case result of
     Left err -> print err
-    Right !program -> do
-      -- do constantFolding
-      let !cfProg = foldConstants program
-      generateDotFile dotFile cfProg
-      -- do nameAnalysis
-      let !naResult = doNameAnalysis program
-      let !symbTable = case naResult of
-            Left (NameError sourcePos err) -> error $ "NameError at " ++ show sourcePos ++ "\n" ++ err
-            Right st -> st
-      -- do typeAnalysis
-      let !mResult = doTypeAnalysis symbTable program
-      let !(st, taProg) = case mResult of
-            Left (TypeError sourcePos err) -> error $ "TypeError at " ++ show sourcePos ++ "\n" ++ err
-            Right (st, taProg) -> (st, taProg)
-      -- print taProg
-      generateDotFile dotFile taProg
-      let ir = generateIR st taProg
-      print ir
-      irFile <- openFile "foo.ir" WriteMode
-      dumpIR irFile ir
-      hClose irFile
-      exeFile <- openFile "foo.s" WriteMode
-      generateCode exeFile ir
-      hClose exeFile
-      -- compile stdlib
-      callCommand "cd runtime_lib && make"
-      callCommand "as foo.s -o foo.out"
-      callCommand "ld foo.out runtime_lib/dreamlib.a -o foo.exe"
-      callCommand "chmod +x foo.exe"
+    Right _ -> return ()
+
+runM :: CmdOption -> ExceptT CompilerError IO ()
+runM (CmdOption sourceFile destinationFile dot keep irDump noRuntime) = do
+  -- read in sourcefile
+  source <- liftIO $ openFile sourceFile ReadMode
+  sourceText <- liftIO $ hGetContents source
+
+  -- parse program
+  !ast <- liftEither . mapLeft ParserError $ parseProgram sourceFile sourceText
+
+  -- print dotFile if --dot is set
+  liftIO $
+    when
+      dot
+      ( do
+          let dotFileName = destinationFile ++ ".dot"
+          liftIO $ generateDotFile dotFileName ast
+      )
+
+  -- do nameAnalysis
+  !symbolTable <- liftEither . mapLeft AnalysisError $ doNameAnalysis ast
+
+  -- do constantFolding
+  let !cfAst = foldConstants ast
+
+  -- do typeAnalysis
+  (taSymbolTable, taAst) <- liftEither . mapLeft AnalysisError $ doTypeAnalysis symbolTable cfAst
+
+  -- print typed dotFile if --dot is set
+  liftIO $
+    when
+      dot
+      ( do
+          let typedDotFileName = destinationFile ++ ".typed.dot"
+          generateDotFile typedDotFileName taAst
+      )
+
+  -- generate IR
+  let ir = generateIR taSymbolTable taAst
+
+  -- dump IR if --dump-ir is set
+  liftIO $
+    when
+      irDump
+      ( do
+          let irFileName = destinationFile ++ ".ir"
+          irFile <- liftIO $ openFile irFileName WriteMode
+          liftIO $ dumpIR irFile ir
+          liftIO $ hClose irFile
+      )
+
+  -- create assembly
+  let assemblyFileName = destinationFile ++ ".s"
+  exeFile <- liftIO $ openFile assemblyFileName WriteMode
+  liftIO $ generateCode exeFile ir
+  liftIO $ hClose exeFile
+
+  -- compile stdlib
+  liftIO $ callCommand "cd runtime_lib && make"
+
+  -- assemble program
+  let objectFileName = destinationFile ++ ".o"
+  liftIO . callCommand $ "as " ++ assemblyFileName ++ " -o " ++ objectFileName
+
+  -- link with stdlib
+  liftIO . callCommand $ "ld " ++ objectFileName ++ " runtime_lib/dreamlib.a -o " ++ destinationFile
+
+  -- make executable
+  liftIO . callCommand $ "chmod +x " ++ destinationFile
+
+  -- cleanup if --keep not set
+  liftIO $
+    unless
+      keep
+      ( do
+          removeFile assemblyFileName
+          removeFile objectFileName
+      )
