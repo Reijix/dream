@@ -1,1 +1,2 @@
-func main () {} end
+func main () : int {
+} end

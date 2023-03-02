@@ -1,4 +1,11 @@
-func main () {
+var x : int
+
+func main () : int {
     x := 5;
     f(x);
+    return x;
+} end
+
+func f(x : int) {
+    return;
 } end

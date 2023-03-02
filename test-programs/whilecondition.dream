@@ -1,7 +1,8 @@
-func main () {
+func main () : int {
     while x == 5 do
         x := 5;
     end;
+    return 0;
 } end
 
 var x : int

@@ -1,4 +1,7 @@
-func main () {
+var x : int
+
+func main(): int {
     x := 5 + 5;
-}
-end
+    writeChar(10);
+    return 5;
+} end
