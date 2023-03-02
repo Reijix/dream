@@ -17,7 +17,7 @@ extra-source-files: CHANGELOG.md
 
 library compiler-lib
     exposed-modules:  Parser, ParserError, Dot, NameAnalysis, TypeAnalysis, AnalysisError, ConstantFolding, IRGenerator, DumpIR, CodeGenerator
-    build-depends:    base ^>=4.16.1.0,
+    build-depends:    base,
                       containers, mtl, parsec, extra
     other-modules:    ArchX86, IRSyntax, Lexer, MemoryLocation, MemoryLocationAssigner, Symbol, SymbolTable, Syntax
     hs-source-dirs:   parser, analysis, dot-generator, constantfolding, IR, backend

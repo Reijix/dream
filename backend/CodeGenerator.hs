@@ -51,16 +51,21 @@ writeUnary :: String -> String -> String -> CGMonad ()
 writeUnary mnemo op comment = do
   comments <- gets comments
   if comments
-    then writeLine $ mnemo ++ " " ++ op ++ "    #" ++ comment
-    else writeLine $ mnemo ++ " " ++ op
+    then writeLine $ str ++ replicate (max (35 - strLen) 4) ' ' ++ "#" ++ comment
+    else writeLine str
+  where
+    str = mnemo ++ " " ++ op
+    strLen = length str
 
 writeBinary :: String -> String -> String -> String -> CGMonad ()
 writeBinary mnemo op1 op2 comment = do
   comments <- gets comments
   if comments
-    then writeLine $ mnemo ++ " " ++ op1 ++ ", " ++ op2 ++ "    #" ++ comment
-    else writeLine $ mnemo ++ " " ++ op1 ++ ", " ++ op2
-
+    then writeLine $ str ++ replicate (max (35 - strLen) 4) ' ' ++ "#" ++ comment
+    else writeLine str
+  where
+    str = mnemo ++ " " ++ op1 ++ ", " ++ op2
+    strLen = length str
 writeLine :: String -> CGMonad ()
 writeLine str = do
   handle <- gets handle
