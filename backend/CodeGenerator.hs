@@ -1,6 +1,7 @@
 module CodeGenerator (generateCode) where
 
-import ArchX86
+import ArchX86 ( archX86 )
+import Arch ( Arch(..) )
 import qualified Control.Monad
 import Control.Monad.State
 import Data.Map
@@ -8,6 +9,9 @@ import IRSyntax
 import MemoryLocation
 import MemoryLocationAssigner
 import System.IO
+
+architecture :: Arch
+architecture = archX86
 
 data CGState = CGState
   { memoryLocations :: Map IRVariable MemoryLocation,
@@ -95,7 +99,7 @@ visitProgram (IRProgram gVars funs) = do
 
 visitGlobalVariable :: IRVariable -> CGMonad ()
 visitGlobalVariable (IRVar name True False vType) = do
-  writeBinary ".lcomm" name (show $ sizeOfType vType) "global variable declaration"
+  writeBinary ".lcomm" name (show $ sizeOfType architecture vType) "global variable declaration"
 visitGlobalVariable _ = error "visitGlobalVariable invalid call"
 
 visitFunction :: IRFunction -> CGMonad ()
@@ -125,7 +129,7 @@ visitInstruction (RET opM) = do
     Nothing -> return ()
     Just op -> do
       loc <- locationForOperand op
-      let retLoc = cgShow returnLocation
+      let retLoc = cgShow $ returnLocation architecture
       writeBinary "movq" loc retLoc "return value [RET]"
   -- adjust rsp
   sfs <- gets currentSFS
@@ -201,13 +205,13 @@ visitInstruction (Assignment (CALL retM name _ args)) = do
   -- call statement
   writeUnary "call" name "[CALL]"
   -- remove arguments from stack
-  writeBinary "addq" ('$' : show (length args * sizeOfAddress)) "%rsp" "clear arguments from stack [CALL]"
+  writeBinary "addq" ('$' : show (length args * sizeOfAddress architecture)) "%rsp" "clear arguments from stack [CALL]"
   -- assign retVal
   case retM of
     Nothing -> return ()
     Just retVal -> do
       retStr <- locationForOperand $ IRVariable retVal
-      let retLoc = cgShow returnLocation
+      let retLoc = cgShow $ returnLocation architecture
       writeBinary "movq" retLoc retStr "move return value [CALL]"
   return undefined
   where
