@@ -19,7 +19,7 @@ library compiler-lib
     exposed-modules:  Parser, ParserError, Dot, NameAnalysis, TypeAnalysis, AnalysisError, ConstantFolding, IRGenerator, DumpIR, CodeGenerator
     build-depends:    base,
                       containers, mtl, parsec, extra
-    other-modules:    ArchX86, IRSyntax, Lexer, MemoryLocation, MemoryLocationAssigner, Symbol, SymbolTable, Syntax
+    other-modules:    ArchX86, Arch, IRSyntax, Lexer, MemoryLocation, MemoryLocationAssigner, Symbol, SymbolTable, Syntax
     hs-source-dirs:   parser, analysis, dot-generator, constantfolding, IR, backend
     default-language: Haskell2010
 
