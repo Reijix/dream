@@ -355,7 +355,7 @@ visitExpression expr@(Identifier name _) = do
   symbol <- getSymbolForExpression expr
   let varM = lookup symbol definedVars
   let var = case varM of
-        Nothing -> error $ "this shouldnt happen, no defined irVariable for symbol: " ++ show symbol ++ "\ndefined vars: " ++ show definedVars
+        Nothing -> error "this shouldnt happen, no defined irVariable for symbol"
         Just var -> var
   return $ IRVariable var
 visitExpression expr@(TypeCast innerExpr (PrimitiveTypeName pType) _) = do
