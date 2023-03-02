@@ -37,6 +37,7 @@ assignGlobalVariable :: IRVariable -> MLMonad ()
 assignGlobalVariable var@(IRVar name True False _) = do
   ml <- gets memoryLocations
   modify (\state -> state {memoryLocations = insert var (StaticLocation name) ml})
+assignGlobalVariable _ = error "assignGlobalVariable falsely called"
 
 assignFunction :: IRFunction -> MLMonad ()
 assignFunction fun@(IRFunction _ _ _ params localVars virtualRegs) = do
@@ -61,6 +62,8 @@ assignLocalVariable var@(IRVar name False _ varType) = do
   ml <- gets memoryLocations
   -- modify state
   modify (\state -> state {offset = newOff, memoryLocations = insert var (StackFrameLocation newOff) ml})
+assignLocalVariable _ = error "assignLocalVariable invalid call"
+
 
 assignParameter :: IRVariable -> MLMonad ()
 assignParameter var@(IRVar name False _ varType) = do
@@ -68,3 +71,4 @@ assignParameter var@(IRVar name False _ varType) = do
   ml <- gets memoryLocations
   -- insert memorylocations and update offset
   modify (\state -> state {memoryLocations = insert var (StackFrameLocation off) ml, offset = off + sizeOfType varType})
+assignParameter _ = error "assignParameter invalid call"

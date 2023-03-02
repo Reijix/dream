@@ -45,8 +45,8 @@ visitProgram st (Program decls) = do
   st2@(dst2, inner_st2) <- foldM collectFunctionSymbols st1 functionDeclarations
   foldM visitFunctionDeclaration st2 functionDeclarations
   where
-    globalVariables = [var | var@(VariableDeclaration {}) <- decls]
-    functionDeclarations = [fun | fun@(FunctionDeclaration {}) <- decls]
+    globalVariables = [var | var@VariableDeclaration {} <- decls]
+    functionDeclarations = [fun | fun@FunctionDeclaration {} <- decls]
 
 collectFunctionSymbols :: NAState -> Declaration -> Either AnalysisError NAState
 collectFunctionSymbols (dt : dts, st) decl@(FunctionDeclaration (Identifier name iSourcePos) params retType block sourcePos) = do
@@ -57,6 +57,7 @@ collectFunctionSymbols (dt : dts, st) decl@(FunctionDeclaration (Identifier name
   if notMember name dt
     then return (new_dt : dts, new_st)
     else Left $ NameError sourcePos ("Functiondeclaration " ++ name ++ " already defined!")
+collectFunctionSymbols _ _ = error "collectFunctionSymbols invalid call!"
 
 visitGlobalVariable :: NAState -> Declaration -> Either AnalysisError NAState
 visitGlobalVariable (dt : dts, st) decl@(VariableDeclaration (Identifier name iSourcePos) tName sourcePos) = do
@@ -66,6 +67,7 @@ visitGlobalVariable (dt : dts, st) decl@(VariableDeclaration (Identifier name iS
   if notMember name dt
     then return (new_dt : dts, new_st)
     else Left $ NameError sourcePos ("Global variable " ++ name ++ " multiple definitions!")
+visitGlobalVariable _ _ = error "visitGlobalVariable invalid call!"
 
 visitFunctionDeclaration :: NAState -> Declaration -> Either AnalysisError NAState
 visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name iSourcePos) params retType block sourcePos) = do
@@ -75,6 +77,7 @@ visitFunctionDeclaration (dts, st) decl@(FunctionDeclaration (Identifier name iS
   -- visit block
   (_, new_st) <- visitBlock param_state block
   return (dts, new_st)
+visitFunctionDeclaration _ _ = error "visitFunctionDeclaration invalid call!"
 
 visitParameterDeclaration :: NAState -> Declaration -> Either AnalysisError NAState
 visitParameterDeclaration (dt : dts, st) decl@(ParameterDeclaration (Identifier name iSourcePos) tName sourcePos) = do
@@ -84,6 +87,7 @@ visitParameterDeclaration (dt : dts, st) decl@(ParameterDeclaration (Identifier 
   if notMember name dt
     then return (new_dt : dts, new_st)
     else Left $ NameError sourcePos ("Parameterdeclaration " ++ name ++ " already defined!")
+visitParameterDeclaration _ _ = error "visitParameterDeclaration invalid call!"
 
 visitLocalVariable :: NAState -> Declaration -> Either AnalysisError NAState
 visitLocalVariable (dt : dts, st) decl@(VariableDeclaration (Identifier name iSourcePos) tName sourcePos) = do
@@ -93,6 +97,7 @@ visitLocalVariable (dt : dts, st) decl@(VariableDeclaration (Identifier name iSo
   if notMember name dt
     then return (new_dt : dts, new_st)
     else Left $ NameError sourcePos ("Local variable " ++ name ++ " already defined!")
+visitLocalVariable _ _ = error "visitLocalVariable invalid call!"
 
 visitBlock :: NAState -> Block -> Either AnalysisError NAState
 visitBlock (dts, st) (Block decls stmnts) = do

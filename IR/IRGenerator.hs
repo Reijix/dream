@@ -100,6 +100,7 @@ createIndexForArrayAccess (ArrayType _ dimensions) ops = do
       let instruction = Assignment $ BinaryOperation register lastMul (IRConstant $ IRIntConstant dimension) IRSyntax.MUL
       appendInstruction instruction
       return $ IRVariable register
+createIndexForArrayAccess _ _ = error "createIndexForArrayAccess called on non arrayType"
 
 -- helpers for extracting types out of the symbol table
 -- TODO these functions need to be double and triple checked...
@@ -128,10 +129,11 @@ getSymbolForExpression (BinaryExpression expr _ _ _) = getSymbolForExpression ex
 getSymbolForExpression (FunctionCall expr _ _) = do
   st <- gets symbolTable
   return . fromJust $ symbolForExpression expr st
-getSymbolForExpression expr@(Identifier {}) = do
+getSymbolForExpression expr@Identifier {} = do
   st <- gets symbolTable
   return . fromJust $ symbolForExpression expr st
 getSymbolForExpression (TypeCast expr _ _) = getSymbolForExpression expr
+getSymbolForExpression (Constant _ _) = error "getSymbolForExpression invalid call"
 
 -- runner function that generates the IR AST for a given dream AST
 generateIR :: SymbolTable -> Program -> IRProgram
@@ -147,8 +149,8 @@ visitProgram (Program decls) = do
   irFunctions <- mapM visitFunctionDeclaration functionDeclarations
   return $ IRProgram irVars irFunctions
   where
-    globalVariables = [var | var@(VariableDeclaration {}) <- decls]
-    functionDeclarations = [fun | fun@(FunctionDeclaration {}) <- decls]
+    globalVariables = [var | var@VariableDeclaration {} <- decls]
+    functionDeclarations = [fun | fun@FunctionDeclaration {} <- decls]
 
 visitGlobalVariable :: Declaration -> IRMonad IRVariable
 visitGlobalVariable decl@(VariableDeclaration (Identifier name _) _ _) = do
@@ -159,6 +161,7 @@ visitGlobalVariable decl@(VariableDeclaration (Identifier name _) _ _) = do
   symbol <- getSymbolForDeclaration decl
   modify (\state -> state {definedVariables = insert symbol irVar (definedVariables state)})
   return irVar
+visitGlobalVariable _ = error "visitGlobalVariable invalid call"
 
 visitLocalVariable :: Declaration -> IRMonad IRVariable
 visitLocalVariable decl@(VariableDeclaration (Identifier name _) _ _) = do
@@ -172,6 +175,7 @@ visitLocalVariable decl@(VariableDeclaration (Identifier name _) _ _) = do
   defVars <- gets definedVariables
   modify (\state -> state {definedVariables = insert symbol irVar defVars})
   return irVar
+visitLocalVariable _ = error "visitLocalVariable invalid call"
 
 visitParameterDeclaration :: Declaration -> IRMonad IRVariable
 visitParameterDeclaration decl@(ParameterDeclaration (Identifier name _) _ _) = do
@@ -182,6 +186,7 @@ visitParameterDeclaration decl@(ParameterDeclaration (Identifier name _) _ _) = 
   symbol <- getSymbolForDeclaration decl
   modify (\state -> state {definedVariables = insert symbol irVar (definedVariables state)})
   return irVar
+visitParameterDeclaration _ = error "visitParemeterDeclaration invalid call"
 
 visitFunctionDeclaration :: Declaration -> IRMonad IRFunction
 visitFunctionDeclaration decl@(FunctionDeclaration (Identifier name _) params _ block _) = do
@@ -202,6 +207,7 @@ visitFunctionDeclaration decl@(FunctionDeclaration (Identifier name _) params _ 
 
   -- return currentFun
   gets currentFun
+visitFunctionDeclaration _ = error "visitFunctionDeclaration invalid call"
 
 visitBlock :: Block -> IRMonad ()
 visitBlock (Block decls stmnts) = do
@@ -328,9 +334,12 @@ visitExpression expr@(ArrayAccess aVar accesses _) = do
       arrayType <- getTypeForExpression expr
       let baseType = case arrayType of
             ArrayType baseType _ -> PrimType baseType
+            _ -> error "array doesn't have arraytype!"
       -- create a virtual register to load result into
       register <- createVirtualRegister baseType
-      let arrayIRVar = case arrayIROp of IRVariable irVar -> irVar
+      let arrayIRVar = case arrayIROp of 
+            IRVariable irVar -> irVar
+            _ -> error "arrayIROp not of type IRVariable!"
       -- append LOAD instruction
       appendInstruction $ Assignment $ LOAD register arrayIRVar index
       return $ IRVariable register
@@ -349,13 +358,14 @@ visitExpression expr@(FunctionCall (Identifier funName _) args _) = do
       register <- createVirtualRegister funType
       appendInstruction . Assignment $ CALL (Just register) funName funType irArguments
       return $ IRVariable register
+visitExpression FunctionCall {} = error "FunctionCall invalid call!"
 visitExpression expr@(Identifier name _) = do
   -- lookup identifier in defined vars and return the associated IRVariable
   definedVars <- gets definedVariables
   symbol <- getSymbolForExpression expr
   let varM = lookup symbol definedVars
   let var = case varM of
-        Nothing -> error "this shouldnt happen, no defined irVariable for symbol"
+        Nothing -> error "this shouldnt happen, no defined irVariable for symbol!"
         Just var -> var
   return $ IRVariable var
 visitExpression expr@(TypeCast innerExpr (PrimitiveTypeName pType) _) = do
@@ -371,6 +381,7 @@ visitExpression expr@(TypeCast innerExpr (PrimitiveTypeName pType) _) = do
         REAL -> Assignment $ CastOperation register exprOp (PrimType INT) (PrimType REAL) I2R
   appendInstruction instruction
   return $ IRVariable register
+visitExpression TypeCast {} = error "TypeCast with non primitve type in IRGenerator found!"
 visitExpression expr@(Constant (IntLit val) _) = return . IRConstant $ IRIntConstant val
 visitExpression expr@(Constant (CharLit val) _) = return . IRConstant . IRIntConstant $ ord val
 visitExpression expr@(Constant (RealLit val) _) = return . IRConstant $ IRRealConstant val
@@ -402,8 +413,10 @@ visitArithmeticExpression expr@(BinaryExpression leftExpr op rightExpr _) = do
         Syntax.SUB -> Assignment $ BinaryOperation register leftOp rightOp IRSyntax.SUB
         Syntax.MUL -> Assignment $ BinaryOperation register leftOp rightOp IRSyntax.MUL
         Syntax.DIV -> Assignment $ BinaryOperation register leftOp rightOp IRSyntax.DIV
+        _ -> error "non arithmetic symbol in arithmeticExpression!"
   appendInstruction instruction
   return $ IRVariable register
+visitArithmeticExpression _ = error "visitArithmeticExpression invalid call!"
 
 visitLogicalExpression :: Expression -> IRMonad IROperand
 visitLogicalExpression expr@(BinaryExpression leftExpr Syntax.AND rightExpr _) = do
@@ -444,6 +457,8 @@ visitLogicalExpression expr@(BinaryExpression leftExpr Syntax.OR rightExpr _) = 
   setLastLabelLeft lastLabelLeftOld
   setLastLabelRight lastLabelRightOld
   return undefined -- result of this shouldn't be used
+visitLogicalExpression _ = error "visitLogicalExpression invalid call!"
+
 
 visitCompareExpression :: Expression -> IRMonad IROperand
 visitCompareExpression expr@(BinaryExpression leftExpr op rightExpr _) = do
@@ -461,6 +476,7 @@ visitCompareExpression expr@(BinaryExpression leftExpr op rightExpr _) = do
         LESS_EQUALS -> JLE
         GREATER -> JGT
         GREATER_EQUALS -> JGE
+        _ -> error "non compare symbol in compare expression!"
   let successJump = Jump lastLabelLeft $ ConditionalJump leftOp rightOp condJump
   -- create unconditional jump to labelFalse
   let failureJump = Jump lastLabelRight JMP
@@ -468,3 +484,4 @@ visitCompareExpression expr@(BinaryExpression leftExpr op rightExpr _) = do
   appendInstruction successJump
   appendInstruction failureJump
   return undefined -- result shouldn't be used
+visitCompareExpression _ = error "visitCompareExpression invalid call!"

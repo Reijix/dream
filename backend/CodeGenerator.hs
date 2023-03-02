@@ -96,6 +96,7 @@ visitProgram (IRProgram gVars funs) = do
 visitGlobalVariable :: IRVariable -> CGMonad ()
 visitGlobalVariable (IRVar name True False vType) = do
   writeBinary ".lcomm" name (show $ sizeOfType vType) "global variable declaration"
+visitGlobalVariable _ = error "visitGlobalVariable invalid call"
 
 visitFunction :: IRFunction -> CGMonad ()
 visitFunction fun@(IRFunction name retType instructions _ _ _) = do

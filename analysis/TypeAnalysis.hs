@@ -65,8 +65,8 @@ visitProgram (st, Program decls) = do
   (st3, prog2) <- foldM f (st2, prog1) (reverse functionDeclarations)
   return (st3, prog2)
   where
-    globalVariables = [var | var@(VariableDeclaration {}) <- decls]
-    functionDeclarations = [fun | fun@(FunctionDeclaration {}) <- decls]
+    globalVariables = [var | var@VariableDeclaration {} <- decls]
+    functionDeclarations = [fun | fun@FunctionDeclaration {} <- decls]
     f :: (SymbolTable, Program) -> Declaration -> Either AnalysisError (SymbolTable, Program)
     f (st, Program decls) decl = do
       (st1, new_decl) <- visitDeclaration (st, decl)
@@ -109,7 +109,8 @@ visitProgram (st, Program decls) = do
         get_return_type = case mRetType of
           Nothing -> Right VoidType
           Just (PrimitiveTypeName pType) -> Right $ PrimType pType
-          Just (ArrayTypeName {}) -> Left $ TypeError sourcePos "Function return type must be primitive!"
+          Just ArrayTypeName {} -> Left $ TypeError sourcePos "Function return type must be primitive!"
+    shallowVisit _ _ = error "shallowVisit invalid call!"
 
 visitDeclaration :: (SymbolTable, Declaration) -> Either AnalysisError (SymbolTable, Declaration)
 visitDeclaration (st, decl@(FunctionDeclaration ident@(Identifier name iSourcePos) params retType block sourcePos)) = do
@@ -169,6 +170,7 @@ visitDeclaration (st, decl@(VariableDeclaration ident@(Identifier name iSourcePo
             extractPrimitiveType :: TypeName -> Either AnalysisError PrimitiveType
             extractPrimitiveType (PrimitiveTypeName INT) = Right INT
             extractPrimitiveType _ = Left $ TypeError sourcePos "Arraylengths need to be of integer type!"
+visitDeclaration _ = error "visitDeclaration invalid call!"
 
 -- The third parameter 'curFun' is used to pass down the function in which we currently are,
 -- so that we can later check the return type when we are at a return statement
@@ -234,6 +236,7 @@ visitStatement (st, stmnt@(ReturnStatement m_expr sourcePos), curFun) = do
   (funName, returnType) <- case symbolForDeclaration curFun st of
     Nothing -> Left $ TypeError sourcePos "return statement not inside function?? Your parser is fucked!"
     Just (Symbol funName (FunctionType retType _) _ _) -> return (funName, retType)
+    _ -> error "found invalid type for function when visiting return in TypeAnalysis!"
   -- check expression
   (st1, expr') <- case m_expr of
     Nothing -> case returnType of
