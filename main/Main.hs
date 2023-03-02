@@ -109,11 +109,11 @@ runM (CmdOption sourceFile destinationFile dot keep irDump noRuntime) = do
           liftIO $ generateDotFile dotFileName ast
       )
 
-  -- do nameAnalysis
-  !symbolTable <- liftEither . mapLeft AnalysisError $ doNameAnalysis ast
-
   -- do constantFolding
   let !cfAst = foldConstants ast
+
+  -- do nameAnalysis
+  !symbolTable <- liftEither . mapLeft AnalysisError $ doNameAnalysis cfAst
 
   -- do typeAnalysis
   (taSymbolTable, taAst) <- liftEither . mapLeft AnalysisError $ doTypeAnalysis symbolTable cfAst
