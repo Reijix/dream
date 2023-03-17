@@ -9,15 +9,16 @@ author:             Leon Vatthauer
 maintainer:         leon.vatthauer@fau.de
 category:           Compiler
 Tested-With: GHC ==9.2.2
-
--- A copyright notice.
--- copyright:
--- category:
 extra-source-files: CHANGELOG.md
+
+-- source repo info
+source-repository head
+    type: git
+    location: git://github.com/Reijix/dream.git
 
 library compiler-lib
     exposed-modules:  Parser, ParserError, Dot, NameAnalysis, TypeAnalysis, AnalysisError, ConstantFolding, IRGenerator, DumpIR, CodeGenerator
-    build-depends:    base,
+    build-depends:    base >= 4.5 && < 4.7,
                       containers, mtl, parsec, extra
     other-modules:    ArchX86, Arch, IRSyntax, Lexer, MemoryLocation, MemoryLocationAssigner, Symbol, SymbolTable, Syntax
     hs-source-dirs:   parser, analysis, dot-generator, constantfolding, IR, backend
