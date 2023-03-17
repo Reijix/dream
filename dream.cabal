@@ -18,7 +18,7 @@ source-repository head
 
 library compiler-lib
     exposed-modules:  Parser, ParserError, Dot, NameAnalysis, TypeAnalysis, AnalysisError, ConstantFolding, IRGenerator, DumpIR, CodeGenerator
-    build-depends:    base >= 4.5 && < 4.7,
+    build-depends:    base >= 4.16 && < 4.18,
                       containers, mtl, parsec, extra
     other-modules:    ArchX86, Arch, IRSyntax, Lexer, MemoryLocation, MemoryLocationAssigner, Symbol, SymbolTable, Syntax
     hs-source-dirs:   parser, analysis, dot-generator, constantfolding, IR, backend
