@@ -246,7 +246,7 @@ functionCall :: Parser Expression
 functionCall =
   FunctionCall
     <$> identifier
-    <*> parens (many argument)
+    <*> parens (commaSep argument)
     <*> getPosition
     <?> "Function Call"
 

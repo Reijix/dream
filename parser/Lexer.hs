@@ -3,6 +3,7 @@ module Lexer where
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
+import Text.Parsec (oneOf)
 
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser style
@@ -13,7 +14,9 @@ lexer = Tok.makeTokenParser style
       emptyDef
         { Tok.commentLine = "#",
           Tok.reservedOpNames = ops,
-          Tok.reservedNames = names
+          Tok.reservedNames = names--,
+          --Tok.opStart = oneOf "andor+-*/:=!<>",
+          --Tok.opLetter = oneOf "andor+-*/:=!<>"
         }
 
 integer :: Parser Integer
