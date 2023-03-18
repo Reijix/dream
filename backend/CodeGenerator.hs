@@ -14,11 +14,16 @@ architecture :: Arch
 architecture = archX86
 
 data CGState = CGState
-  { memoryLocations :: Map IRVariable MemoryLocation,
-    stackFrameSizes :: Map IRFunction Int,
-    handle :: Handle,
-    currentSFS :: Int,
-    comments :: Bool
+  { memoryLocations :: Map IRVariable MemoryLocation, -- memory locations calculated via memorylocationassigner
+    -- stackframe info
+    stackFrameSizes :: Map IRFunction Int,            -- contains the size of each functions stackframe
+    currentSFS :: Int,                                -- the current stackframesize (used when returning from a function)
+    -- printing
+    handle :: Handle,                                 -- the handle to print to
+    comments :: Bool,                                 -- whether to print comments in assembly code
+    -- descriptors needed for register usage
+    addressDescriptor :: Map IRVariable [MemoryLocation],
+    registerDescriptor :: Map MemoryLocation [IRVariable]
   }
 
 type CGMonad = StateT CGState IO
@@ -26,7 +31,7 @@ type CGMonad = StateT CGState IO
 -- runner function
 generateCode :: Handle -> IRProgram -> IO ()
 generateCode handle prog = do
-  Control.Monad.void (runStateT (visitProgram prog) (CGState ml sfs handle 0 False))
+  Control.Monad.void (runStateT (visitProgram prog) (CGState ml sfs 0 handle False empty empty))
   where
     (ml, sfs) = assignMemoryLocations prog
 
@@ -254,3 +259,12 @@ visitInstruction (Assignment (BinaryOperation target lhs rhs op)) = do
   -- move result to target
   writeBinary "movq" resultReg targetStr "move result to target [BIN-OP]"
 visitInstruction (Assignment CastOperation {}) = error "Cast operation not yet implemented!"
+
+startBasicBlock :: CGMonad ()
+startBasicBlock = undefined
+
+endBasicBlock :: CGMonad ()
+endBasicBlock = undefined
+
+getreg :: IRInstruction -> CGMonad MemoryLocation
+getreg = undefined
