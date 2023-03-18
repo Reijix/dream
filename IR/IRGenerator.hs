@@ -124,7 +124,10 @@ getSymbolForExpression (ArrayAccess expr _ _) = do
   -- TODO expr should have arraytype!!
   st <- gets symbolTable
   return . fromJust $ symbolForExpression expr st
-getSymbolForExpression (BinaryExpression expr _ _ _) = getSymbolForExpression expr
+getSymbolForExpression (BinaryExpression e1@(Constant _ _) _ e2@(Constant _ _) _) = error $ "getSymbolForExpression: found constants " ++ show e1 ++ " and " ++ show e2
+getSymbolForExpression (BinaryExpression lhs _ (Constant _ _) _) = getSymbolForExpression lhs
+getSymbolForExpression (BinaryExpression (Constant _ _) _ rhs _) = getSymbolForExpression rhs
+getSymbolForExpression (BinaryExpression lhs _ rhs _) = getSymbolForExpression lhs
 -- TODO do constants have symbols?? No??
 getSymbolForExpression (FunctionCall expr _ _) = do
   st <- gets symbolTable
@@ -133,7 +136,7 @@ getSymbolForExpression expr@Identifier {} = do
   st <- gets symbolTable
   return . fromJust $ symbolForExpression expr st
 getSymbolForExpression (TypeCast expr _ _) = getSymbolForExpression expr
-getSymbolForExpression (Constant _ _) = error "getSymbolForExpression invalid call"
+getSymbolForExpression c@(Constant _ _) = error $ "getSymbolForExpression invalid call, got: " ++ show c
 
 -- runner function that generates the IR AST for a given dream AST
 generateIR :: SymbolTable -> Program -> IRProgram

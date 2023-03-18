@@ -1,6 +1,7 @@
 module ConstantFolding (foldConstants) where
 
 import Syntax
+import Data.Char (digitToInt)
 
 foldConstants :: Program -> Program
 foldConstants = visitProgram
@@ -33,6 +34,9 @@ visitExpression expr@(BinaryExpression lhs op rhs sourcePos) | isArithOp op =
       right = visitExpression rhs
    in case (left, right) of
         (Constant (IntLit l1) sourcePos1, Constant (IntLit l2) sourcePos2) -> Constant (IntLit (applyOp op l1 l2)) sourcePos -- fold
+        (Constant (CharLit l1) sourcePos1, Constant (IntLit l2) sourcePos2) -> Constant (IntLit (applyOp op (digitToInt l1) l2)) sourcePos -- fold
+        (Constant (IntLit l1) sourcePos1, Constant (CharLit l2) sourcePos2) -> Constant (IntLit (applyOp op l1 (digitToInt l2))) sourcePos -- fold
+        (Constant (CharLit l1) sourcePos1, Constant (CharLit l2) sourcePos2) -> Constant (IntLit (applyOp op (digitToInt l1) (digitToInt l2))) sourcePos -- fold
         _ -> expr -- no folding
   where
     applyOp ADD = (+)
@@ -40,6 +44,7 @@ visitExpression expr@(BinaryExpression lhs op rhs sourcePos) | isArithOp op =
     applyOp MUL = (*)
     applyOp DIV = div
     applyOp _ = error "No binary expression found while constantfolding..."
+visitExpression expr@(BinaryExpression lhs op rhs sourcePos) = BinaryExpression (visitExpression lhs) op (visitExpression rhs) sourcePos
 visitExpression (FunctionCall expr exprs sourcePos) = FunctionCall (visitExpression expr) (map visitExpression exprs) sourcePos
 visitExpression (TypeCast expr tName sourcePos) = TypeCast (visitExpression expr) tName sourcePos
 visitExpression x = x -- Identifier, Constant
