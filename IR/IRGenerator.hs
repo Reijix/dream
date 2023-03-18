@@ -10,6 +10,7 @@ import Symbol
 import SymbolTable
 import Syntax
 import Prelude hiding (lookup)
+import Data.List.Extra (snoc)
 
 -- TODO reset state between functions (variable naming...)
 
@@ -203,10 +204,23 @@ visitFunctionDeclaration decl@(FunctionDeclaration (Identifier name _) params _ 
   modify (\state -> state {currentFun = IRFunction name retType [] paramVars [] []})
 
   -- visit block
-  instructions <- visitBlock block
+  visitBlock block
 
+  -- check if last statement is a return, add one if needed with default value
+  fun@(IRFunction _ _ instructions _ _ _) <- gets currentFun
+  let newInstructions = case instructions of
+        [] -> [createRet fun]
+        (i:is) -> case last instructions of
+            RET _ -> instructions
+            _ -> snoc instructions $ createRet fun
   -- return currentFun
-  gets currentFun
+  return fun {funInstructions = newInstructions} 
+  where
+    createRet :: IRFunction -> IRInstruction
+    createRet (IRFunction _ VoidType _ _ _ _) = RET Nothing
+    createRet (IRFunction _ (PrimType INT) _ _ _ _) = RET $ Just (IRConstant $ IRIntConstant 0)
+    createRet (IRFunction _ (PrimType REAL) _ _ _ _) = RET $ Just (IRConstant $ IRRealConstant 0.0)
+    createRet fun = error $ "createRet: function has wrong return type: " ++ show (funRetType fun)
 visitFunctionDeclaration _ = error "visitFunctionDeclaration invalid call"
 
 visitBlock :: Block -> IRMonad ()
