@@ -113,7 +113,7 @@ runM (CmdOption sourceFile destinationFile dot keep irDump noRuntime) = do
   let !cfAst = foldConstants ast
 
   -- do nameAnalysis
-  !symbolTable <- liftEither . mapLeft AnalysisError $ doNameAnalysis cfAst
+  !symbolTable <- liftEither . mapLeft AnalysisError $ doNameAnalysis cfAst noRuntime
 
   -- do typeAnalysis
   (taSymbolTable, taAst) <- liftEither . mapLeft AnalysisError $ doTypeAnalysis symbolTable cfAst

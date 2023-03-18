@@ -17,9 +17,9 @@ type DefinitionTable = Map String Symbol
 type NAState = ([DefinitionTable], SymbolTable)
 
 -- runner method for nameanalysis, only this needs to be exported
-doNameAnalysis :: Program -> Either AnalysisError SymbolTable
-doNameAnalysis prog = do
-  (_, st) <- visitProgram ([preludeDefinitions], preludeSt) prog
+doNameAnalysis :: Program -> Bool -> Either AnalysisError SymbolTable
+doNameAnalysis prog noRuntime = do
+  (_, st) <- if noRuntime then visitProgram ([empty], emptySymbolTable) prog else  visitProgram ([preludeDefinitions], preludeSt) prog
   return st
   where
     preludeDefinitions = foldl' insertSymb empty preludeSymbols
