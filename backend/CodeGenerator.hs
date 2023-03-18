@@ -26,7 +26,7 @@ type CGMonad = StateT CGState IO
 -- runner function
 generateCode :: Handle -> IRProgram -> IO ()
 generateCode handle prog = do
-  Control.Monad.void (runStateT (visitProgram prog) (CGState ml sfs handle 0 True))
+  Control.Monad.void (runStateT (visitProgram prog) (CGState ml sfs handle 0 False))
   where
     (ml, sfs) = assignMemoryLocations prog
 
@@ -50,7 +50,7 @@ instance CGShow LABEL where
 instance CGShow BinaryOperation where
   cgShow ADD = "addq"
   cgShow SUB = "subq"
-  cgShow MUL = "mulq"
+  cgShow MUL = "imulq"
   cgShow DIV = "idivq"
  
 locationForOperand :: IROperand -> CGMonad String
@@ -201,7 +201,7 @@ visitInstruction (Assignment (LOAD target arr index)) = do
   writeBinary "movq" resultReg targetStr "move to target [LOAD]"
 visitInstruction (Assignment (CALL retM name _ args)) = do
   -- push arguments to stack
-  mapM_ handleArg (reverse args)
+  mapM_ handleArg args
   -- call statement
   writeUnary "call" name "[CALL]"
   -- remove arguments from stack

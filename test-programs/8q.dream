@@ -1,0 +1,64 @@
+var up : int[15]
+var down : int[15]
+var rows : int[8]
+var x : int[8]
+
+
+func print(): int {
+  var k : int;
+  var d : int;
+
+  k := 0;
+  while k < 8 do
+    d := writeInt(x[k] + 1);
+    d := writeChar(32);
+    k := k + 1;
+  end;
+  d := writeChar(10);
+  return 0;
+} end
+
+
+func queens(c : int): int {
+  var r : int;
+  var d : int;
+
+  r := 0;
+  while r < 8 do
+    if (rows[r] != 0) and (up[(r - c) + 7] != 0) and (down[r + c] != 0) then
+      rows[r] := 0;
+      up[(r - c) + 7] := 0;
+      down[r + c] := 0;
+      x[c] := r;
+      if c == 7 then
+        d := print();
+      else
+        d := queens(c + 1);
+      end;
+      rows[r] := 1;
+      up[(r - c) + 7] := 1;
+      down[r + c] := 1;
+    end;
+    r := r + 1;
+  end;
+  return 0;
+} end
+
+
+func main(): int {
+  var i : int;
+
+  i := 0;
+  while i < 15 do
+    up[i] := 1;
+    down[i] := 1;
+    i := i + 1;
+  end;
+  i := 0;
+  while i < 8 do
+    rows[i] := 1;
+    i := i + 1;
+  end;
+  i := queens(0);
+  return 0;
+} end

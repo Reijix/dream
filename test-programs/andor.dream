@@ -1,0 +1,6 @@
+func main() : int {
+    if 5 == 5 and 4 == 4 and 2 == 2 then
+        writeChar(65);
+    end;
+    return 0;
+} end
