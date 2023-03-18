@@ -28,7 +28,7 @@ visitStatement (ReturnStatement (Just expr) sourcePos) = ReturnStatement (Just (
 
 visitExpression :: Expression -> Expression
 visitExpression (ArrayAccess expr exprs sourcePos) = ArrayAccess (visitExpression expr) (map visitExpression exprs) sourcePos
-visitExpression expr@(BinaryExpression lhs op rhs sourcePos) =
+visitExpression expr@(BinaryExpression lhs op rhs sourcePos) | isArithOp op =
   let left = visitExpression lhs
       right = visitExpression rhs
    in case (left, right) of
@@ -39,7 +39,14 @@ visitExpression expr@(BinaryExpression lhs op rhs sourcePos) =
     applyOp SUB = (-)
     applyOp MUL = (*)
     applyOp DIV = div
-    applyOp _ = error "Trying to apply a weird operator to two int constants... this shouldn't happen, your compiler is flawed, idiot!"
+    applyOp _ = error "No binary expression found while constantfolding..."
 visitExpression (FunctionCall expr exprs sourcePos) = FunctionCall (visitExpression expr) (map visitExpression exprs) sourcePos
 visitExpression (TypeCast expr tName sourcePos) = TypeCast (visitExpression expr) tName sourcePos
 visitExpression x = x -- Identifier, Constant
+
+isArithOp :: BinOp -> Bool
+isArithOp ADD = True
+isArithOp SUB = True
+isArithOp MUL = True
+isArithOp DIV = True
+isArithOp _ = False
