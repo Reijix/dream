@@ -1,0 +1,4 @@
+func main () : int {
+    writeInt(5);
+    return 0;
+} end

@@ -54,8 +54,8 @@ assignFunction fun@(IRFunction _ _ _ params localVars virtualRegs) = do
   sfs <- gets stackFrameSizes
   off <- gets offset
   modify (\state -> state {stackFrameSizes = insert fun (-off) sfs, offset = sizeOfAddress architecture * 2})
-  -- visit parameters
-  mapM_ assignParameter params
+  -- assign parameters
+  assignParameters params
   -- reset offset
   modify (\state -> state {offset = 0})
 
@@ -78,3 +78,13 @@ assignParameter var@(IRVar name False _ varType) = do
   -- insert memorylocations and update offset
   modify (\state -> state {memoryLocations = insert var (StackFrameLocation off) ml, offset = off + sizeOfType architecture varType})
 assignParameter _ = error "assignParameter invalid call"
+
+assignParameters :: [IRVariable] -> MLMonad ()
+assignParameters vars = do
+  let pRegs = parameterRegisters architecture
+  mapM_ toRegister $ zip vars pRegs
+  where
+    toRegister :: (IRVariable, MemoryLocation) -> MLMonad ()
+    toRegister (var@(IRVar name False _ varType), reg) = do
+      ml <- gets memoryLocations
+      modify (\state -> state {memoryLocations = insert var reg ml})

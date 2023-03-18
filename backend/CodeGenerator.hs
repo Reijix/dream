@@ -31,7 +31,7 @@ type CGMonad = StateT CGState IO
 -- runner function
 generateCode :: Handle -> IRProgram -> IO ()
 generateCode handle prog = do
-  Control.Monad.void (runStateT (visitProgram prog) (CGState ml sfs 0 handle False empty empty))
+  Control.Monad.void (runStateT (visitProgram prog) (CGState ml sfs 0 handle True empty empty))
   where
     (ml, sfs) = assignMemoryLocations prog
 
@@ -205,12 +205,16 @@ visitInstruction (Assignment (LOAD target arr index)) = do
   -- then write into target
   writeBinary "movq" resultReg targetStr "move to target [LOAD]"
 visitInstruction (Assignment (CALL retM name _ args)) = do
+  -- save own arguments
+  mapM_ saveArg $ parameterRegisters architecture
   -- push arguments to stack
-  mapM_ handleArg args
+  pushArgs args
   -- call statement
   writeUnary "call" name "[CALL]"
-  -- remove arguments from stack
-  writeBinary "addq" ('$' : show (length args * sizeOfAddress architecture)) "%rsp" "clear arguments from stack [CALL]"
+  -- remove arguments from stack TODO only needed when actually written to stack
+  --writeBinary "addq" ('$' : show (length args * sizeOfAddress architecture)) "%rsp" "clear arguments from stack [CALL]"
+  -- restore own arguments
+  mapM_ restoreArg . reverse $ parameterRegisters architecture
   -- assign retVal
   case retM of
     Nothing -> return ()
@@ -218,8 +222,17 @@ visitInstruction (Assignment (CALL retM name _ args)) = do
       retStr <- locationForOperand $ IRVariable retVal
       let retLoc = cgShow $ returnLocation architecture
       writeBinary "movq" retLoc retStr "move return value [CALL]"
-  return undefined
   where
+    pushArgs :: [IROperand] -> CGMonad ()
+    pushArgs ops = do
+      mapM_ doMove $ zip ops $ parameterRegisters architecture
+      where
+        doMove :: (IROperand, MemoryLocation) -> CGMonad ()
+        doMove (op, HardwareRegister name _) = do
+          ml <- gets memoryLocations
+          argStr <- locationForOperand op
+          let regStr = "%" ++ name
+          writeBinary "movq" argStr regStr "Move argument to position"
     handleArg :: IROperand -> CGMonad ()
     handleArg op@(IRConstant constant) = do
       let scratch = cgShow $ head scratchRegisters
@@ -230,6 +243,10 @@ visitInstruction (Assignment (CALL retM name _ args)) = do
       let scratch = cgShow $ head scratchRegisters
       argStr <- locationForOperand op
       writeUnary "pushq" argStr "argument to stack [CALL]"
+    saveArg :: MemoryLocation -> CGMonad ()
+    saveArg (HardwareRegister name _) = writeUnary "pushq" ("%" ++ name)  "save own arguments [CALL]"
+    restoreArg :: MemoryLocation -> CGMonad ()
+    restoreArg (HardwareRegister name _) = writeUnary "popq" ("%" ++ name) "restore own argumnets [CALL]"
 visitInstruction (Assignment (BinaryOperation target lhs rhs DIV)) = do
   targetStr <- locationForOperand $ IRVariable target
   leftStr <- locationForOperand lhs

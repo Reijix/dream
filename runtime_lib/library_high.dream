@@ -1,0 +1,121 @@
+func writeChar(c : int) : int {} end # dummy 
+func readChar() : int {} end  # dummy
+
+func writeInt(a : int): int {
+  var b : int[25];
+  var i : int;
+  var d : int;
+  var nch : int;
+
+  # the smallest possible number has to be handled explicitly, since
+  # we cannot invert it...
+  if a == (0 - (9223372036854775807 - 1)) then
+    writeChar('-');
+    writeChar('9');
+    writeChar('2');
+    writeChar('2');
+    writeChar('3');
+    writeChar('3');
+    writeChar('7');
+    writeChar('2');
+    writeChar('0');
+    writeChar('3');
+    writeChar('6');
+    writeChar('8');
+    writeChar('5');
+    writeChar('4');
+    writeChar('7');
+    writeChar('7');
+    writeChar('5');
+    writeChar('8');
+    writeChar('0');
+    writeChar('8');
+    return 20;
+  end;
+
+  nch := 0;
+
+  if a < 0 then
+    d := writeChar('-');
+    nch := 1;
+    a := 0 - a;
+  end;
+
+  i := 0;
+
+  while a > 0 do
+    d := a / 10;
+    b[i] := a - 10 * d;
+    a := d;
+    i := i + 1;
+  end;
+
+  nch := nch + i;
+
+  if i == 0 then
+    d := writeChar('0' + 0);
+    return nch;
+  end;
+
+  while i > 0 do
+    i := i - 1;
+    d := writeChar('0' + b[i]);
+  end;
+
+  return nch;
+} end
+
+func readInt(): int {
+    var result : int;
+    var position : int;
+    var currentPow : int;
+    var sign : int;
+    var num : int[19];
+    var a : int;
+
+    sign := 1;
+    # largest number is:
+    # 9223372036854775808
+
+    # ignore leading non-digits
+    a := readChar();
+    while a < 48 or a > 57 do
+        # check if sign
+        if a == '-' then
+            sign := 0 - 1;
+        end;
+        # check end of input
+        if (a == (0 - 1)) then
+            return 0;
+        end;
+
+        a := readChar();
+    end;
+
+    # read number into array, leftmost digit is at num[0]
+    position := 0;
+    while a >= 48 and a <= 57 do
+        num[position] := a - 48;
+        position := position + 1;
+        a := readChar();
+    end;
+
+    # modify pointer so that it points to last (successfully) read digit
+    position := position - 1;
+
+    # currentPow is a power of 10
+    # we start with the rightmost num (lowest value) and then multiply currentPow with 10 each iteration
+    # use position as index
+    result := 0;
+    currentPow := 1;
+    while position >= 0 do
+        result := result + num[position] * currentPow;
+        currentPow := currentPow * 10;
+        position := position - 1;
+    end;
+
+    # apply sign
+    result := result * sign;
+
+    return result;
+} end

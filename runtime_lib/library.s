@@ -45,7 +45,7 @@ writeChar:
     pushq %rbp
     movq %rsp, %rbp
     # push char to stack
-    pushq 16(%rbp)
+    pushq %rcx
     # fd that is written to (stdout)
     movq $1, %rdi
     # write the first char on rsp (the char we pushed)
@@ -61,380 +61,645 @@ writeChar:
     popq %rbp
     ret
 
-.global writeInt
+.global writeInt                   #
 writeInt:
-pushq %rbp
-movq %rsp, %rbp
-subq $480, %rsp
-movq 16(%rbp), %rsi
-movq $-9223372036854775808, %rdi
-cmpq %rdi, %rsi
-je L0
-jmp L1
+pushq %rbp                         #save rbp
+movq %rsp, %rbp                    #update rbp
+subq $672, %rsp                    #reserve space for local vars
+movq %rcx, %r12                    #leftOp to register [COND-JMP]
+movq $-9223372036854775806, %r13    #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+je L0                              #[COND-JMP]
+jmp L1                             #[JMP]
 L0:
-movq $45, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -232(%rbp)    # move retVal
-movq $57, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -240(%rbp)    # move retVal
-movq $50, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -248(%rbp)    # move retVal
-movq $50, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -256(%rbp)    # move retVal
-movq $51, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -264(%rbp)    # move retVal
-movq $51, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -272(%rbp)    # move retVal
-movq $55, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -280(%rbp)    # move retVal
-movq $50, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -288(%rbp)    # move retVal
-movq $48, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -296(%rbp)    # move retVal
-movq $51, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -304(%rbp)    # move retVal
-movq $54, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -312(%rbp)    # move retVal
-movq $56, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -320(%rbp)    # move retVal
-movq $53, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -328(%rbp)    # move retVal
-movq $52, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -336(%rbp)    # move retVal
-movq $55, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -344(%rbp)    # move retVal
-movq $55, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -352(%rbp)    # move retVal
-movq $53, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -360(%rbp)    # move retVal
-movq $56, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -368(%rbp)    # move retVal
-movq $48, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -376(%rbp)    # move retVal
-movq $56, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -384(%rbp)    # move retVal
-mov $20, %rax
-addq $480, %rsp
-popq %rbp
-ret
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $45, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -232(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $57, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -240(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $50, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -248(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $50, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -256(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $51, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -264(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $51, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -272(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $55, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -280(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $50, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -288(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $48, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -296(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $51, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -304(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $54, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -312(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $56, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -320(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $53, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -328(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $52, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -336(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $55, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -344(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $55, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -352(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $53, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -360(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $56, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -368(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $48, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -376(%rbp)              #move return value [CALL]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $56, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -384(%rbp)              #move return value [CALL]
+movq $20, %rax                     #return value [RET]
+addq $672, %rsp                    #clean up stack-frame [RET]
+popq %rbp                          #restore rbp [RET]
+RET
 L1:
-movq $0, %rax
-movq %rax, -224(%rbp)
-movq 16(%rbp), %rsi
-movq $0, %rdi
-cmpq %rdi, %rsi
-jl L2
-jmp L3
+movq $0, %r12                      #source into register [MOV]
+movq %r12, -224(%rbp)              #[MOV]
+movq %rcx, %r12                    #leftOp to register [COND-JMP]
+movq $0, %r13                      #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+jl L2                              #[COND-JMP]
+jmp L3                             #[JMP]
 L2:
-movq $45, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -392(%rbp)    # move retVal
-movq -392(%rbp), %rax
-movq %rax, -216(%rbp)
-movq $1, %rax
-movq %rax, -224(%rbp)
-movq $0, %rax
-movq 16(%rbp), %rcx    # move rightOp to scratch register
-subq %rcx, %rax
-movq %rax, -400(%rbp)
-movq -400(%rbp), %rax
-movq %rax, 16(%rbp)
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $45, %rcx                     #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -392(%rbp)              #move return value [CALL]
+movq -392(%rbp), %r12              #source into register [MOV]
+movq %r12, -216(%rbp)              #[MOV]
+movq $1, %r12                      #source into register [MOV]
+movq %r12, -224(%rbp)              #[MOV]
+movq $0, %r12                      #move leftOp to scratch [BIN-OP]
+movq %rcx, %r13                    #move rightOp to scratch [BIN-OP]
+subq %r13, %r12                    #[BIN-OP]
+movq %r12, -400(%rbp)              #move result to target [BIN-OP]
+movq -400(%rbp), %r12              #source into register [MOV]
+movq %r12, %rcx                    #[MOV]
 L3:
-movq $0, %rax
-movq %rax, -208(%rbp)
-jmp L6
+movq $0, %r12                      #source into register [MOV]
+movq %r12, -208(%rbp)              #[MOV]
+jmp L6                             #[JMP]
 L4:
-movq 16(%rbp), %rax
+movq %rcx, %rax                    #leftOp to %rax [DIV]
 cqto
-mov $10, %rdi
-idivq %rdi
-mov %rax, -408(%rbp)
-movq -408(%rbp), %rax
-movq %rax, -216(%rbp)
-movq $10, %rax
-movq -216(%rbp), %rcx    # move rightOp to scratch register
-imulq %rcx, %rax
-movq %rax, -416(%rbp)
-movq 16(%rbp), %rax
-movq -416(%rbp), %rcx    # move rightOp to scratch register
-subq %rcx, %rax
-movq %rax, -424(%rbp)
-movq -208(%rbp), %rax
+movq $10, %r12                     #rightOp to register [DIV]
+idivq %r12                         #[DIV]
+movq %rax, -408(%rbp)              #move result to target [DIV]
+movq -408(%rbp), %r12              #source into register [MOV]
+movq %r12, -216(%rbp)              #[MOV]
+movq $10, %r12                     #move leftOp to scratch [BIN-OP]
+movq -216(%rbp), %r13              #move rightOp to scratch [BIN-OP]
+imulq %r13, %r12                   #[BIN-OP]
+movq %r12, -416(%rbp)              #move result to target [BIN-OP]
+movq %rcx, %r12                    #move leftOp to scratch [BIN-OP]
+movq -416(%rbp), %r13              #move rightOp to scratch [BIN-OP]
+subq %r13, %r12                    #[BIN-OP]
+movq %r12, -424(%rbp)              #move result to target [BIN-OP]
+movq -208(%rbp), %r12              #move index to register [STORE]
 cltq
-movq -424(%rbp), %r8
-movq %r8, -200(%rbp, %rax, 8)    # STORE
-movq -216(%rbp), %rax
-movq %rax, 16(%rbp)
-movq -208(%rbp), %rax
-movq $1, %rcx    # move rightOp to scratch register
-addq %rcx, %rax
-movq %rax, -432(%rbp)
-movq -432(%rbp), %rax
-movq %rax, -208(%rbp)
+movq -424(%rbp), %r13              #move operand to register [STORE]
+movq %r13, -200(%rbp, %r12, 8)     #[STORE]
+movq -216(%rbp), %r12              #source into register [MOV]
+movq %r12, %rcx                    #[MOV]
+movq -208(%rbp), %r12              #move leftOp to scratch [BIN-OP]
+movq $1, %r13                      #move rightOp to scratch [BIN-OP]
+addq %r13, %r12                    #[BIN-OP]
+movq %r12, -432(%rbp)              #move result to target [BIN-OP]
+movq -432(%rbp), %r12              #source into register [MOV]
+movq %r12, -208(%rbp)              #[MOV]
 L6:
-movq 16(%rbp), %rsi
-movq $0, %rdi
-cmpq %rdi, %rsi
-jg L4
-jmp L5
+movq %rcx, %r12                    #leftOp to register [COND-JMP]
+movq $0, %r13                      #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+jg L4                              #[COND-JMP]
+jmp L5                             #[JMP]
 L5:
-movq -224(%rbp), %rax
-movq -208(%rbp), %rcx    # move rightOp to scratch register
-addq %rcx, %rax
-movq %rax, -440(%rbp)
-movq -440(%rbp), %rax
-movq %rax, -224(%rbp)
-movq -208(%rbp), %rsi
-movq $0, %rdi
-cmpq %rdi, %rsi
-je L7
-jmp L8
+movq -224(%rbp), %r12              #move leftOp to scratch [BIN-OP]
+movq -208(%rbp), %r13              #move rightOp to scratch [BIN-OP]
+addq %r13, %r12                    #[BIN-OP]
+movq %r12, -440(%rbp)              #move result to target [BIN-OP]
+movq -440(%rbp), %r12              #source into register [MOV]
+movq %r12, -224(%rbp)              #[MOV]
+movq -208(%rbp), %r12              #leftOp to register [COND-JMP]
+movq $0, %r13                      #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+je L7                              #[COND-JMP]
+jmp L8                             #[JMP]
 L7:
-movq $48, %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -448(%rbp)    # move retVal
-movq -448(%rbp), %rax
-movq %rax, -216(%rbp)
-mov -224(%rbp), %rax
-addq $480, %rsp
-popq %rbp
-ret
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq $0, %rcx                      #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -448(%rbp)              #move return value [CALL]
+movq -448(%rbp), %r12              #source into register [MOV]
+movq %r12, -216(%rbp)              #[MOV]
+movq -224(%rbp), %rax              #return value [RET]
+addq $672, %rsp                    #clean up stack-frame [RET]
+popq %rbp                          #restore rbp [RET]
+RET
 L8:
-jmp L11
+jmp L11                            #[JMP]
 L9:
-movq -208(%rbp), %rax
-movq $1, %rcx    # move rightOp to scratch register
-subq %rcx, %rax
-movq %rax, -456(%rbp)
-movq -456(%rbp), %rax
-movq %rax, -208(%rbp)
-movq -208(%rbp), %rax
+movq -208(%rbp), %r12              #move leftOp to scratch [BIN-OP]
+movq $1, %r13                      #move rightOp to scratch [BIN-OP]
+subq %r13, %r12                    #[BIN-OP]
+movq %r12, -456(%rbp)              #move result to target [BIN-OP]
+movq -456(%rbp), %r12              #source into register [MOV]
+movq %r12, -208(%rbp)              #[MOV]
+movq -208(%rbp), %r12              #move index to register [LOAD]
 cltq
-movq -200(%rbp, %rax, 8), %rsi    # LOAD
-movq %rsi, -464(%rbp)
-movq $48, %rax
-movq -464(%rbp), %rcx    # move rightOp to scratch register
-addq %rcx, %rax
-movq %rax, -472(%rbp)
-movq -472(%rbp), %rcx    # move rightOp to scratch register
-pushq %rcx    # arguments on stack
-call writeChar    # do call
-popq %rdi    # pop arguments
-movq %rax, -480(%rbp)    # move retVal
-movq -480(%rbp), %rax
-movq %rax, -216(%rbp)
+movq -200(%rbp, %r12, 8), %r13     #LOAD into register [LOAD]
+movq %r13, -464(%rbp)              #move to target [LOAD]
+movq $48, %r12                     #move leftOp to scratch [BIN-OP]
+movq -464(%rbp), %r13              #move rightOp to scratch [BIN-OP]
+addq %r13, %r12                    #[BIN-OP]
+movq %r12, -664(%rbp)              #move result to target [BIN-OP]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+movq -664(%rbp), %rcx              #Move argument to position
+call writeChar                     #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -672(%rbp)              #move return value [CALL]
+movq -672(%rbp), %r12              #source into register [MOV]
+movq %r12, -216(%rbp)              #[MOV]
 L11:
-movq -208(%rbp), %rsi
-movq $0, %rdi
-cmpq %rdi, %rsi
-jg L9
-jmp L10
+movq -208(%rbp), %r12              #leftOp to register [COND-JMP]
+movq $0, %r13                      #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+jg L9                              #[COND-JMP]
+jmp L10                            #[JMP]
 L10:
-mov -224(%rbp), %rax
-addq $480, %rsp
-popq %rbp
-ret
-.global readInt
+movq -224(%rbp), %rax              #return value [RET]
+addq $672, %rsp                    #clean up stack-frame [RET]
+popq %rbp                          #restore rbp [RET]
+RET
+.global readInt                    #
 readInt:
-pushq %rbp
-movq %rsp, %rbp
-subq $288, %rsp
-movq $1, %rax
-movq %rax, -32(%rbp)
-call readChar    # do call
-movq %rax, -200(%rbp)    # move retVal
-movq -200(%rbp), %rax
-movq %rax, -192(%rbp)
-jmp L14
+pushq %rbp                         #save rbp
+movq %rsp, %rbp                    #update rbp
+subq $432, %rsp                    #reserve space for local vars
+movq $1, %r12                      #source into register [MOV]
+movq %r12, -32(%rbp)               #[MOV]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+call readChar                      #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -200(%rbp)              #move return value [CALL]
+movq -200(%rbp), %r12              #source into register [MOV]
+movq %r12, -192(%rbp)              #[MOV]
+jmp L14                            #[JMP]
 L12:
-movq -192(%rbp), %rsi
-movq $45, %rdi
-cmpq %rdi, %rsi
-je L15
-jmp L16
+movq -192(%rbp), %r12              #leftOp to register [COND-JMP]
+movq $45, %r13                     #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+je L15                             #[COND-JMP]
+jmp L16                            #[JMP]
 L15:
-movq $-1, %rax
-movq %rax, -32(%rbp)
+movq $-1, %r12                     #source into register [MOV]
+movq %r12, -32(%rbp)               #[MOV]
 L16:
-movq -192(%rbp), %rsi
-movq $-1, %rdi
-cmpq %rdi, %rsi
-je L17
-jmp L18
+movq -192(%rbp), %r12              #leftOp to register [COND-JMP]
+movq $-1, %r13                     #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+je L17                             #[COND-JMP]
+jmp L18                            #[JMP]
 L17:
-mov $0, %rax
-addq $288, %rsp
-popq %rbp
-ret
+movq $0, %rax                      #return value [RET]
+addq $432, %rsp                    #clean up stack-frame [RET]
+popq %rbp                          #restore rbp [RET]
+RET
 L18:
-call readChar    # do call
-movq %rax, -208(%rbp)    # move retVal
-movq -208(%rbp), %rax
-movq %rax, -192(%rbp)
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+call readChar                      #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -208(%rbp)              #move return value [CALL]
+movq -208(%rbp), %r12              #source into register [MOV]
+movq %r12, -192(%rbp)              #[MOV]
 L14:
-movq -192(%rbp), %rsi
-movq $48, %rdi
-cmpq %rdi, %rsi
-jl L12
-jmp L19
+movq -192(%rbp), %r12              #leftOp to register [COND-JMP]
+movq $48, %r13                     #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+jl L12                             #[COND-JMP]
+jmp L19                            #[JMP]
 L19:
-movq -192(%rbp), %rsi
-movq $57, %rdi
-cmpq %rdi, %rsi
-jg L12
-jmp L13
+movq -192(%rbp), %r12              #leftOp to register [COND-JMP]
+movq $57, %r13                     #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+jg L12                             #[COND-JMP]
+jmp L13                            #[JMP]
 L13:
-movq $0, %rax
-movq %rax, -16(%rbp)
-jmp L22
+movq $0, %r12                      #source into register [MOV]
+movq %r12, -16(%rbp)               #[MOV]
+jmp L22                            #[JMP]
 L20:
-movq -192(%rbp), %rax
-movq $48, %rcx    # move rightOp to scratch register
-subq %rcx, %rax
-movq %rax, -216(%rbp)
-movq -16(%rbp), %rax
+movq -192(%rbp), %r12              #move leftOp to scratch [BIN-OP]
+movq $48, %r13                     #move rightOp to scratch [BIN-OP]
+subq %r13, %r12                    #[BIN-OP]
+movq %r12, -216(%rbp)              #move result to target [BIN-OP]
+movq -16(%rbp), %r12               #move index to register [STORE]
 cltq
-movq -216(%rbp), %r8
-movq %r8, -184(%rbp, %rax, 8)    # STORE
-movq -16(%rbp), %rax
-movq $1, %rcx    # move rightOp to scratch register
-addq %rcx, %rax
-movq %rax, -224(%rbp)
-movq -224(%rbp), %rax
-movq %rax, -16(%rbp)
-call readChar    # do call
-movq %rax, -232(%rbp)    # move retVal
-movq -232(%rbp), %rax
-movq %rax, -192(%rbp)
+movq -216(%rbp), %r13              #move operand to register [STORE]
+movq %r13, -184(%rbp, %r12, 8)     #[STORE]
+movq -16(%rbp), %r12               #move leftOp to scratch [BIN-OP]
+movq $1, %r13                      #move rightOp to scratch [BIN-OP]
+addq %r13, %r12                    #[BIN-OP]
+movq %r12, -224(%rbp)              #move result to target [BIN-OP]
+movq -224(%rbp), %r12              #source into register [MOV]
+movq %r12, -16(%rbp)               #[MOV]
+pushq %rcx                         #save own arguments [CALL]
+pushq %rdx                         #save own arguments [CALL]
+pushq %rdi                         #save own arguments [CALL]
+pushq %rsi                         #save own arguments [CALL]
+pushq %r8                          #save own arguments [CALL]
+pushq %r9                          #save own arguments [CALL]
+call readChar                      #[CALL]
+popq %r9                           #restore own argumnets [CALL]
+popq %r8                           #restore own argumnets [CALL]
+popq %rsi                          #restore own argumnets [CALL]
+popq %rdi                          #restore own argumnets [CALL]
+popq %rdx                          #restore own argumnets [CALL]
+popq %rcx                          #restore own argumnets [CALL]
+movq %rax, -232(%rbp)              #move return value [CALL]
+movq -232(%rbp), %r12              #source into register [MOV]
+movq %r12, -192(%rbp)              #[MOV]
 L22:
-movq -192(%rbp), %rsi
-movq $48, %rdi
-cmpq %rdi, %rsi
-jge L23
-jmp L21
+movq -192(%rbp), %r12              #leftOp to register [COND-JMP]
+movq $48, %r13                     #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+jge L23                            #[COND-JMP]
+jmp L21                            #[JMP]
 L23:
-movq -192(%rbp), %rsi
-movq $57, %rdi
-cmpq %rdi, %rsi
-jle L20
-jmp L21
+movq -192(%rbp), %r12              #leftOp to register [COND-JMP]
+movq $57, %r13                     #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+jle L20                            #[COND-JMP]
+jmp L21                            #[JMP]
 L21:
-movq -16(%rbp), %rax
-movq $1, %rcx    # move rightOp to scratch register
-subq %rcx, %rax
-movq %rax, -240(%rbp)
-movq -240(%rbp), %rax
-movq %rax, -16(%rbp)
-movq $0, %rax
-movq %rax, -8(%rbp)
-movq $1, %rax
-movq %rax, -24(%rbp)
-jmp L26
+movq -16(%rbp), %r12               #move leftOp to scratch [BIN-OP]
+movq $1, %r13                      #move rightOp to scratch [BIN-OP]
+subq %r13, %r12                    #[BIN-OP]
+movq %r12, -240(%rbp)              #move result to target [BIN-OP]
+movq -240(%rbp), %r12              #source into register [MOV]
+movq %r12, -16(%rbp)               #[MOV]
+movq $0, %r12                      #source into register [MOV]
+movq %r12, -8(%rbp)                #[MOV]
+movq $1, %r12                      #source into register [MOV]
+movq %r12, -24(%rbp)               #[MOV]
+jmp L26                            #[JMP]
 L24:
-movq -16(%rbp), %rax
+movq -16(%rbp), %r12               #move index to register [LOAD]
 cltq
-movq -184(%rbp, %rax, 8), %rsi    # LOAD
-movq %rsi, -248(%rbp)
-movq -248(%rbp), %rax
-movq -24(%rbp), %rcx    # move rightOp to scratch register
-imulq %rcx, %rax
-movq %rax, -256(%rbp)
-movq -8(%rbp), %rax
-movq -256(%rbp), %rcx    # move rightOp to scratch register
-addq %rcx, %rax
-movq %rax, -264(%rbp)
-movq -264(%rbp), %rax
-movq %rax, -8(%rbp)
-movq -24(%rbp), %rax
-movq $10, %rcx    # move rightOp to scratch register
-imulq %rcx, %rax
-movq %rax, -272(%rbp)
-movq -272(%rbp), %rax
-movq %rax, -24(%rbp)
-movq -16(%rbp), %rax
-movq $1, %rcx    # move rightOp to scratch register
-subq %rcx, %rax
-movq %rax, -280(%rbp)
-movq -280(%rbp), %rax
-movq %rax, -16(%rbp)
+movq -184(%rbp, %r12, 8), %r13     #LOAD into register [LOAD]
+movq %r13, -248(%rbp)              #move to target [LOAD]
+movq -248(%rbp), %r12              #move leftOp to scratch [BIN-OP]
+movq -24(%rbp), %r13               #move rightOp to scratch [BIN-OP]
+imulq %r13, %r12                   #[BIN-OP]
+movq %r12, -400(%rbp)              #move result to target [BIN-OP]
+movq -8(%rbp), %r12                #move leftOp to scratch [BIN-OP]
+movq -400(%rbp), %r13              #move rightOp to scratch [BIN-OP]
+addq %r13, %r12                    #[BIN-OP]
+movq %r12, -408(%rbp)              #move result to target [BIN-OP]
+movq -408(%rbp), %r12              #source into register [MOV]
+movq %r12, -8(%rbp)                #[MOV]
+movq -24(%rbp), %r12               #move leftOp to scratch [BIN-OP]
+movq $10, %r13                     #move rightOp to scratch [BIN-OP]
+imulq %r13, %r12                   #[BIN-OP]
+movq %r12, -416(%rbp)              #move result to target [BIN-OP]
+movq -416(%rbp), %r12              #source into register [MOV]
+movq %r12, -24(%rbp)               #[MOV]
+movq -16(%rbp), %r12               #move leftOp to scratch [BIN-OP]
+movq $1, %r13                      #move rightOp to scratch [BIN-OP]
+subq %r13, %r12                    #[BIN-OP]
+movq %r12, -424(%rbp)              #move result to target [BIN-OP]
+movq -424(%rbp), %r12              #source into register [MOV]
+movq %r12, -16(%rbp)               #[MOV]
 L26:
-movq -16(%rbp), %rsi
-movq $0, %rdi
-cmpq %rdi, %rsi
-jge L24
-jmp L25
+movq -16(%rbp), %r12               #leftOp to register [COND-JMP]
+movq $0, %r13                      #rightOp to register [COND-JMP]
+cmpq %r13, %r12                    #do cmp [COND-JMP]
+jge L24                            #[COND-JMP]
+jmp L25                            #[JMP]
 L25:
-movq -8(%rbp), %rax
-movq -32(%rbp), %rcx    # move rightOp to scratch register
-imulq %rcx, %rax
-movq %rax, -288(%rbp)
-movq -288(%rbp), %rax
-movq %rax, -8(%rbp)
-mov -8(%rbp), %rax
-addq $288, %rsp
-popq %rbp
-ret
-
+movq -8(%rbp), %r12                #move leftOp to scratch [BIN-OP]
+movq -32(%rbp), %r13               #move rightOp to scratch [BIN-OP]
+imulq %r13, %r12                   #[BIN-OP]
+movq %r12, -432(%rbp)              #move result to target [BIN-OP]
+movq -432(%rbp), %r12              #source into register [MOV]
+movq %r12, -8(%rbp)                #[MOV]
+movq -8(%rbp), %rax                #return value [RET]
+addq $432, %rsp                    #clean up stack-frame [RET]
+popq %rbp                          #restore rbp [RET]
+RET

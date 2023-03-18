@@ -3,5 +3,5 @@ var x : int
 func main(): int {
     x := 5 + 5;
     writeChar(10);
-    return 5;
+    return 0;
 } end
