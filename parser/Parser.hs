@@ -20,7 +20,7 @@ identifier =
 
 globalDeclaration :: Parser Declaration
 globalDeclaration =
-  try globalVariableDeclaration
+  try (globalVariableDeclaration <* semi)
     <|> try globalFunctionDeclaration
 
 globalVariableDeclaration :: Parser Declaration
@@ -29,29 +29,38 @@ globalVariableDeclaration = variableDeclaration
 globalFunctionDeclaration :: Parser Declaration
 globalFunctionDeclaration = functionDeclaration
 
+{- 
+e.g.
+int x;
+real[25] y;
+-} 
 variableDeclaration :: Parser Declaration
 variableDeclaration =
-  VariableDeclaration
-    <$> (reserved "var" *> identifier)
-    <*> (colon *> typeName)
+  flip VariableDeclaration
+    <$> typeName
+    <*> identifier
     <*> getPosition
     <?> "VariableDeclaration"
 
+{-
+e.g.
+int f (int x, real y) {}
+-}
 functionDeclaration :: Parser Declaration
 functionDeclaration =
-  FunctionDeclaration
-    <$> (reserved "func" *> identifier)
+  (\t id args blk pos -> FunctionDeclaration id args t blk pos)
+    <$> optionMaybe typeName
+    <*> identifier
     <*> parens (commaSep parameterDeclaration)
-    <*> optionMaybe (colon *> typeName)
-    <*> (braces block <* reserved "end")
+    <*> block
     <*> getPosition
     <?> "FunctionDeclaration"
 
 parameterDeclaration :: Parser Declaration
 parameterDeclaration =
-  ParameterDeclaration
-    <$> identifier
-    <*> (colon *> typeName)
+  flip ParameterDeclaration
+    <$> typeName
+    <*> identifier
     <*> getPosition
     <?> "ParameterDeclaration"
 
@@ -78,18 +87,23 @@ primitiveTypeName =
 
 block :: Parser Block
 block =
+  braces $
   Block
     <$> endBy variableDeclaration semi
-    <*> endBy statement semi
+    <*> many (primitiveStatement <* semi <|> controlStatement)
 
-statement :: Parser Statement
-statement =
+controlStatement :: Parser Statement
+controlStatement = 
+  try ifStatement
+    <|> try whileStatement 
+    <?> "Control statement"
+
+primitiveStatement :: Parser Statement
+primitiveStatement =
   try functionCallStatement
     <|> try assignStatement
-    <|> try ifStatement
-    <|> try whileStatement
     <|> try returnStatement
-    <?> "Statement"
+    <?> "Primitive statement"
 
 functionCallStatement :: Parser Statement
 functionCallStatement =
@@ -102,7 +116,7 @@ assignStatement :: Parser Statement
 assignStatement =
   AssignStatement
     <$> lvalue
-    <*> (reservedOp ":=" *> arithExpression)
+    <*> (reservedOp "=" *> arithExpression)
     <*> getPosition
     <?> "AssignStatement"
 
@@ -110,8 +124,8 @@ ifStatement :: Parser Statement
 ifStatement =
   IfStatement
     <$> (reserved "if" *> condExpression)
-    <*> (reserved "then" *> block)
-    <*> (optionMaybe (try (reserved "else" >> block)) <* reserved "end")
+    <*> block
+    <*> optionMaybe (try (reserved "else" >> block))
     <*> getPosition
     <?> "IfStatement"
 
@@ -119,8 +133,7 @@ whileStatement :: Parser Statement
 whileStatement =
   WhileStatement
     <$> (reserved "while" *> condExpression)
-    <*> (reserved "do" *> block)
-    <* reserved "end"
+    <*> block
     <*> getPosition
     <?> "WhileStatement"
 
@@ -208,22 +221,19 @@ condExpression =
 
 castExpr :: Parser Expression
 castExpr =
-  parens
-    ( TypeCast
-        <$> arithExpression
-        <*> primitiveTypeName
-        <* reserved "as"
+    flip TypeCast
+        <$> parens primitiveTypeName
+        <*> arithExpression
         <*> getPosition
         <?> "Cast Expression"
-    )
 
 variableAccess :: Parser Expression
 variableAccess = identifier
 
 numberLiteral :: Parser Literal
 numberLiteral =
-  try int
-    <|> try real
+  try real
+    <|> try int
     <|> try Parser.char
     <?> "Number Literal"
 

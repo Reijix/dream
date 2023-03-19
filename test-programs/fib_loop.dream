@@ -1,33 +1,33 @@
-func fib(n : int): int {
-  var a : int;
-  var b : int;
-  var i : int;
+int fib(int n) {
+  int a;
+  int b;
+  int i;
 
-  a := 1;
-  b := 1;
-  i := 2;
-  while i < n do
-    var t : int;
+  a = 1;
+  b = 1;
+  i = 2;
+  while i < n {
+    int t;
 
-    t := a + b;
-    a := b;
-    b := t;
-    i := i + 1;
-  end;
+    t = a + b;
+    a = b;
+    b = t;
+    i = i + 1;
+  }
   return b;
-} end
+}
 
 
-func main(): int {
-  var n : int;
-  var fib_n : int;
+int main() {
+  int n;
+  int fib_n;
 
   writeChar('n');
   writeChar(':');
   writeChar(' ');
-  n := readInt();
-  fib_n := fib(n);
+  n = readInt();
+  fib_n = fib(n);
   writeInt(fib_n);
   writeChar(10);
   return 0;
-} end
+}

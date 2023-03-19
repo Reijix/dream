@@ -1,15 +1,15 @@
-func fib(n : int): int {
-  if n == 0 then
+int fib(int n) {
+  if n == 0 {
     return 0;
-  end;
-  if n == 1 then
+  }
+  if n == 1 {
     return 1;
-  end;
+  }
   return fib(n - 1) + fib(n - 2);
-} end
+}
 
 
-func main(): int {
+int main() {
   writeInt(fib(13));
   return 0;
-} end
+}

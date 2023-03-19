@@ -1,9 +1,9 @@
-func main () : int {
-    while x == 5 do
-        x := 5;
-    end;
+int main () {
+    while x == 5 {
+        x = 5;
+    }
     return 0;
-} end
+}
 
-var x : int
-var y : int
+int x;
+int y;

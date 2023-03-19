@@ -1,11 +1,11 @@
-var x : int
+int x;
 
-func main () : int {
-    x := 5;
+int main () {
+    x = 5;
     f(x);
     return x;
-} end
+}
 
-func f(x : int) {
+f(int x) {
     return;
-} end
+}

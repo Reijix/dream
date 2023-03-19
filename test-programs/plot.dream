@@ -1,42 +1,42 @@
-func funktion(x : int): int {
+int funktion(int x) {
   return x * x;
-} end
+}
 
 
-func zeile(start : int, _end : int, step : int, schwelle : int): int {
-  var dummy : int;
-  var x : int;
+int zeile(int start, int _end, int step, int schwelle) {
+  int dummy;
+  int x;
 
-  x := start;
-  while x <= _end do
-    if funktion(x) >= schwelle then
-      dummy := writeChar(42);
-    else
-      dummy := writeChar(32);
-    end;
-    x := x + step;
-  end;
+  x = start;
+  while x <= _end {
+    if funktion(x) >= schwelle {
+      dummy = writeChar(42);
+    } else {
+      dummy = writeChar(32);
+    }
+    x = x + step;
+  }
   return writeChar(10);
-} end
+}
 
 
-func zeichnen(x1 : int, x2 : int, spalten : int, y1 : int, y2 : int, zeilen : int): int {
-  var xstep : int;
-  var ystep : int;
-  var y : int;
-  var dummy : int;
+int zeichnen(int x1, int x2, int spalten, int y1, int y2, int zeilen) {
+  int xstep;
+  int ystep;
+  int y;
+  int dummy;
 
-  xstep := (x2 - x1) / spalten;
-  ystep := (y2 - y1) / zeilen;
-  y := y2;
-  while (y >= y1) do
-    dummy := zeile(x1, x2, xstep, y);
-    y := y - ystep;
-  end;
+  xstep = (x2 - x1) / spalten;
+  ystep = (y2 - y1) / zeilen;
+  y = y2;
+  while (y >= y1) {
+    dummy = zeile(x1, x2, xstep, y);
+    y = y - ystep;
+  }
   return 0;
-} end
+}
 
 
-func main(): int {
+int main() {
   return zeichnen(0 - 2000, 2000, 64, 0, 4000000, 20);
-} end
+}

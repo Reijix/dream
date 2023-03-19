@@ -1,7 +1,7 @@
-var x : int
+int x;
 
-func main(): int {
-    x := 5 + 5;
+int main() {
+    x = 5 + 5;
     writeChar(10);
     return 0;
-} end
+}

@@ -1,2 +1,2 @@
-func main () : int {
-} end
+int main () {
+}
