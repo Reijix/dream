@@ -1,37 +1,35 @@
-func main () : int {
+int main () {
     f(x);
-    x := readInt();
-    x := z[5];
-    if x == 5
-    then
-        var y : real;
-        y := x + x;
-    else
-        var x : real;
-        x := z[3] * y;
-    end;
+    x = readInt();
+    x = z[5];
+    if x == 5 {
+        real y;
+        y = x + x;
+    } else {
+        real x;
+        x = z[3] * y;
+    }
     return x;
-} end
+}
 
-func f (a : int) : int {
-    var u : int;
-    var v : int;
-    var w : int;
-    if u == 5
-    then
-        var u : real;
-    else
-        var v : real;
-    end;
+int f (int a) {
+    int u;
+    int v;
+    int w;
+    if u == 5 {
+        real u;
+    } else {
+        real v;
+    }
     return 5;
-} end
+}
 
-func g () : int {
+int g () {
     return 5;
-} end
+}
 
-var z : int[5]
+int[5] z;
 
-var x : int
+int x;
 
-var y : real
+real y;

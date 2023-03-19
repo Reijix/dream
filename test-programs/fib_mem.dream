@@ -1,19 +1,19 @@
-var mem : int[51]
+int[51] mem;
 
 
-func fib(n : int): int {
-  if n == 0 or n == 1 then
+int fib(int n) {
+  if n == 0 or n == 1 {
     return n;
-  end;
-  if mem[n] == 0 then
-    mem[n] := fib(n - 1) + fib(n - 2);
-  end;
+  }
+  if mem[n] == 0 {
+    mem[n] = fib(n - 1) + fib(n - 2);
+  }
   return mem[n];
-} end
+}
 
 
-func main(): int {
+int main() {
   writeInt(fib(50));
   writeChar(10);
   return 0;
-} end
+}
