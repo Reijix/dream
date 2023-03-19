@@ -11,6 +11,12 @@ There are two targets/executables:
 ```console
 $ cabal run dreamc
 ```
+arguments to dreamc go after `--`
+
+example:
+```console
+$ cabal run dreamc -- test-programs/plot.dream -o plot --keep
+```
 2. The dream interpreter
 ```console
 $ cabal run dreamci
