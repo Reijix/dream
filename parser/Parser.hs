@@ -221,22 +221,19 @@ condExpression =
 
 castExpr :: Parser Expression
 castExpr =
-  parens
-    ( TypeCast
-        <$> arithExpression
-        <*> primitiveTypeName
-        <* reserved "as"
+    flip TypeCast
+        <$> parens primitiveTypeName
+        <*> arithExpression
         <*> getPosition
         <?> "Cast Expression"
-    )
 
 variableAccess :: Parser Expression
 variableAccess = identifier
 
 numberLiteral :: Parser Literal
 numberLiteral =
-  try int
-    <|> try real
+  try real
+    <|> try int
     <|> try Parser.char
     <?> "Number Literal"
 

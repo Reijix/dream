@@ -1,0 +1,7 @@
+int main () {
+    int x;
+    real y;
+    y = 0.0;
+    x = (int) y;
+    return x;
+}
